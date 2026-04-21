@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BAC MASTER ELITE"
+version = "1.0.0"
+id = "artifacts/bac-master-elite"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24102
+
+[services.development]
+run = "pnpm --filter @workspace/bac-master-elite run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bac-master-elite", "run", "build" ]
+publicDir = "artifacts/bac-master-elite/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24102"
+BASE_PATH = "/"

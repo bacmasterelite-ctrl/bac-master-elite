@@ -3,34 +3,650 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: BAC MASTER ELITE API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: profile
+  - name: subjects
+  - name: lessons
+  - name: exercises
+  - name: annals
+  - name: methodology
+  - name: ranking
+  - name: payments
+  - name: admin
+  - name: ai
+  - name: storage
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [profile]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+    patch:
+      operationId: updateMe
+      tags: [profile]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateProfileBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [profile]
+      summary: Dashboard overview
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+
+  /subjects:
+    get:
+      operationId: listSubjects
+      tags: [subjects]
+      parameters:
+        - in: query
+          name: serie
+          schema: { type: string, enum: [A, C, D] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                type: array
+                items: { $ref: "#/components/schemas/Subject" }
+
+  /lessons:
+    get:
+      operationId: listLessons
+      tags: [lessons]
+      parameters:
+        - in: query
+          name: serie
+          schema: { type: string, enum: [A, C, D] }
+        - in: query
+          name: subjectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Lesson" }
+
+  /lessons/{id}:
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Lesson" }
+
+  /exercises:
+    get:
+      operationId: listExercises
+      tags: [exercises]
+      parameters:
+        - in: query
+          name: serie
+          schema: { type: string, enum: [A, C, D] }
+        - in: query
+          name: subjectId
+          schema: { type: string }
+        - in: query
+          name: difficulty
+          schema: { type: string, enum: [facile, moyen, difficile] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Exercise" }
+
+  /exercises/{id}:
+    get:
+      operationId: getExercise
+      tags: [exercises]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+
+  /exercises/{id}/submit:
+    post:
+      operationId: submitExercise
+      tags: [exercises]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitExerciseBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExerciseResult" }
+
+  /annals:
+    get:
+      operationId: listAnnals
+      tags: [annals]
+      parameters:
+        - in: query
+          name: serie
+          schema: { type: string, enum: [A, C, D] }
+        - in: query
+          name: year
+          schema: { type: integer }
+        - in: query
+          name: subjectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Annal" }
+
+  /methodology:
+    get:
+      operationId: listMethodology
+      tags: [methodology]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MethodologyCard" }
+
+  /ranking:
+    get:
+      operationId: getRanking
+      tags: [ranking]
+      parameters:
+        - in: query
+          name: serie
+          schema: { type: string, enum: [A, C, D] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RankingEntry" }
+
+  /payments:
+    get:
+      operationId: listMyPayments
+      tags: [payments]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Payment" }
+    post:
+      operationId: createPayment
+      tags: [payments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+
+  /payments/info:
+    get:
+      operationId: getPaymentInfo
+      tags: [payments]
+      summary: Mobile money numbers + premium price
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentInfo" }
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Profile" }
+
+  /admin/payments:
+    get:
+      operationId: adminListPayments
+      tags: [admin]
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, approved, rejected] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Payment" }
+
+  /admin/payments/{id}/approve:
+    post:
+      operationId: adminApprovePayment
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+
+  /admin/payments/{id}/reject:
+    post:
+      operationId: adminRejectPayment
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+
+  /admin/stats:
+    get:
+      operationId: adminGetStats
+      tags: [admin]
+      summary: Recharts-friendly statistics
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminStats" }
+
+  /ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: AI tutor chat (text + optional image for premium)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiChatBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiChatResponse" }
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestUploadUrlBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestUploadUrlResponse" }
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    Profile:
+      type: object
+      required: [id, userId, email, isAdmin, isPremium, score, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        email: { type: string }
+        fullName: { type: string, nullable: true }
+        serie: { type: string, enum: [A, C, D], nullable: true }
+        isAdmin: { type: boolean }
+        isPremium: { type: boolean }
+        score: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        fullName: { type: string }
+        serie: { type: string, enum: [A, C, D] }
+
+    DashboardSummary:
+      type: object
+      required: [profile, totals, recentResults]
+      properties:
+        profile: { $ref: "#/components/schemas/Profile" }
+        totals:
+          type: object
+          required: [lessons, exercises, annals, completedExercises]
+          properties:
+            lessons: { type: integer }
+            exercises: { type: integer }
+            annals: { type: integer }
+            completedExercises: { type: integer }
+        recentResults:
+          type: array
+          items: { $ref: "#/components/schemas/ExerciseResult" }
+        rank: { type: integer, nullable: true }
+
+    Subject:
+      type: object
+      required: [id, name, slug, serie, color]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        serie: { type: string, enum: [A, C, D] }
+        color: { type: string }
+        description: { type: string, nullable: true }
+
+    Lesson:
+      type: object
+      required: [id, title, subjectId, serie, content, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        subjectId: { type: string }
+        subjectName: { type: string, nullable: true }
+        serie: { type: string, enum: [A, C, D] }
+        content: { type: string }
+        summary: { type: string, nullable: true }
+        durationMinutes: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    QcmOption:
+      type: object
+      required: [id, text]
+      properties:
+        id: { type: string }
+        text: { type: string }
+
+    QcmQuestion:
+      type: object
+      required: [id, prompt, options, correctOptionId]
+      properties:
+        id: { type: string }
+        prompt: { type: string }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/QcmOption" }
+        correctOptionId: { type: string }
+        explanation: { type: string, nullable: true }
+
+    Exercise:
+      type: object
+      required: [id, title, subjectId, serie, difficulty, questions]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        subjectId: { type: string }
+        subjectName: { type: string, nullable: true }
+        serie: { type: string, enum: [A, C, D] }
+        difficulty: { type: string, enum: [facile, moyen, difficile] }
+        description: { type: string, nullable: true }
+        questions:
+          type: array
+          items: { $ref: "#/components/schemas/QcmQuestion" }
+
+    SubmitExerciseAnswer:
+      type: object
+      required: [questionId, optionId]
+      properties:
+        questionId: { type: string }
+        optionId: { type: string }
+
+    SubmitExerciseBody:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items: { $ref: "#/components/schemas/SubmitExerciseAnswer" }
+
+    ExerciseResult:
+      type: object
+      required: [id, exerciseId, exerciseTitle, score, total, percentage, createdAt]
+      properties:
+        id: { type: string }
+        exerciseId: { type: string }
+        exerciseTitle: { type: string }
+        score: { type: integer }
+        total: { type: integer }
+        percentage: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    Annal:
+      type: object
+      required: [id, title, serie, year, subjectId, pdfUrl, isPremium]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        serie: { type: string, enum: [A, C, D] }
+        year: { type: integer }
+        subjectId: { type: string }
+        subjectName: { type: string, nullable: true }
+        pdfUrl: { type: string }
+        isPremium: { type: boolean }
+
+    MethodologyCard:
+      type: object
+      required: [id, title, slug, summary, content, icon]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        slug: { type: string }
+        summary: { type: string }
+        content: { type: string }
+        icon: { type: string }
+
+    RankingEntry:
+      type: object
+      required: [rank, userId, fullName, score, serie]
+      properties:
+        rank: { type: integer }
+        userId: { type: string }
+        fullName: { type: string }
+        score: { type: integer }
+        serie: { type: string, enum: [A, C, D], nullable: true }
+        isPremium: { type: boolean }
+
+    Payment:
+      type: object
+      required: [id, userId, amount, method, status, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userEmail: { type: string, nullable: true }
+        userName: { type: string, nullable: true }
+        amount: { type: integer }
+        method: { type: string, enum: [wave, mtn, orange] }
+        proofUrl: { type: string, nullable: true }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string, format: date-time }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+
+    CreatePaymentBody:
+      type: object
+      required: [amount, method, proofUrl]
+      properties:
+        amount: { type: integer, minimum: 100 }
+        method: { type: string, enum: [wave, mtn, orange] }
+        proofUrl: { type: string }
+
+    PaymentInfo:
+      type: object
+      required: [price, currency, methods]
+      properties:
+        price: { type: integer }
+        currency: { type: string }
+        methods:
+          type: array
+          items:
+            type: object
+            required: [method, label, number]
+            properties:
+              method: { type: string, enum: [wave, mtn, orange] }
+              label: { type: string }
+              number: { type: string }
+
+    AdminStats:
+      type: object
+      required: [totalUsers, premiumUsers, pendingPayments, usersBySerie, signupsByMonth]
+      properties:
+        totalUsers: { type: integer }
+        premiumUsers: { type: integer }
+        pendingPayments: { type: integer }
+        usersBySerie:
+          type: array
+          items:
+            type: object
+            required: [serie, count]
+            properties:
+              serie: { type: string }
+              count: { type: integer }
+        signupsByMonth:
+          type: array
+          items:
+            type: object
+            required: [month, count]
+            properties:
+              month: { type: string }
+              count: { type: integer }
+
+    AiChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+
+    AiChatBody:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/AiChatMessage" }
+        imageUrl: { type: string, nullable: true }
+
+    AiChatResponse:
+      type: object
+      required: [reply]
+      properties:
+        reply: { type: string }
+
+    RequestUploadUrlBody:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string }
+        size: { type: integer }
+        contentType: { type: string }
+
+    RequestUploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
