@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ClerkProvider, useAuth } from "@clerk/react";
+import { frFR } from "@clerk/localizations";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import App from "./App";
 import "./index.css";
@@ -29,7 +30,7 @@ const proxyUrl =
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} proxyUrl={proxyUrl} signInUrl="/login" signUpUrl="/login">
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} proxyUrl={proxyUrl} signInUrl="/login" signUpUrl="/login" localization={frFR}>
       <ApiTokenBridge>
         <App />
       </ApiTokenBridge>
