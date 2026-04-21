@@ -1,9 +1,9 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAuth, ClerkLoaded, ClerkLoading } from "@clerk/react";
 import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/Login";
 import OnboardingPage from "@/pages/Onboarding";
@@ -57,15 +57,15 @@ function ProtectedRoutes() {
 }
 
 function AuthRouter() {
-  const { isSignedIn, isLoaded } = useAuth();
-  if (!isLoaded) {
+  const { session, loading } = useSupabaseAuth();
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
-  if (!isSignedIn) {
+  if (!session) {
     return (
       <Switch>
         <Route path="/login" component={LoginPage} />
@@ -87,14 +87,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <ClerkLoading>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-          </ClerkLoading>
-          <ClerkLoaded>
-            <AuthRouter />
-          </ClerkLoaded>
+          <AuthRouter />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

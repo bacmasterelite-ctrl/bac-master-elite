@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useUpdateMe } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useUser } from "@clerk/react";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,11 +17,10 @@ const SERIES = [
 ] as const;
 
 export default function OnboardingPage() {
-  const { user } = useUser();
+  const { user } = useSupabaseAuth();
   const [serie, setSerie] = useState<"A" | "C" | "D" | "">("");
-  const [fullName, setFullName] = useState(
-    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "",
-  );
+  const meta = (user?.user_metadata ?? {}) as { full_name?: string; name?: string };
+  const [fullName, setFullName] = useState(meta.full_name || meta.name || "");
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 

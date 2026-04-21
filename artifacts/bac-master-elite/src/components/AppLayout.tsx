@@ -1,6 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { UserButton } from "@clerk/react";
 import { useGetMe } from "@workspace/api-client-react";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, User as UserIcon } from "lucide-react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -39,9 +47,42 @@ const ADMIN_NAV = [
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: profile } = useGetMe();
+  const { user, signOut } = useSupabaseAuth();
+
+  const initial = (profile?.fullName || profile?.email || user?.email || "?")[0]?.toUpperCase();
+
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-semibold flex items-center justify-center shrink-0 hover:opacity-90"
+          data-testid="button-user-menu"
+        >
+          {initial}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-xl">
+        <div className="px-3 py-2 text-xs text-gray-500 truncate">{user?.email}</div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
+          <UserIcon className="w-4 h-4 mr-2" /> Mon profil
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={async () => {
+            await signOut();
+            navigate("/login");
+          }}
+          data-testid="menu-signout"
+          className="text-red-600 focus:text-red-700"
+        >
+          <LogOut className="w-4 h-4 mr-2" /> Déconnexion
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const NavLinks = ({ items }: { items: typeof NAV }) => (
     <nav className="space-y-1">
@@ -90,7 +131,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <span className="font-bold text-gray-900">BAC MASTER</span>
         </div>
-        <UserButton />
+        <UserMenu />
       </header>
 
       {/* Mobile drawer */}
@@ -155,7 +196,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="mt-auto pt-4 border-t border-gray-100">
             <div className="flex items-center gap-3 px-2 py-2">
-              <UserButton />
+              <UserMenu />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 truncate">
                   {profile?.fullName || profile?.email}

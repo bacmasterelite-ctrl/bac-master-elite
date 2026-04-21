@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Response } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
 import { eq, sql, desc, and, gte } from "drizzle-orm";
 import { db } from "../lib/db";
 import {
@@ -14,39 +13,43 @@ import { UpdateMeBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-async function ensureProfile(userId: string): Promise<typeof profilesTable.$inferSelect> {
-  const [existing] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+async function ensureProfile(
+  userId: string,
+  email?: string,
+  fullName?: string | null,
+): Promise<typeof profilesTable.$inferSelect> {
+  const [existing] = await db
+    .select()
+    .from(profilesTable)
+    .where(eq(profilesTable.userId, userId))
+    .limit(1);
   if (existing) return existing;
-
-  let email = `${userId}@unknown.local`;
-  let fullName: string | null = null;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    email = user.emailAddresses[0]?.emailAddress || email;
-    fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
-  } catch {
-    /* fallback */
-  }
 
   const isFirstUser =
     (await db.select({ c: sql<number>`count(*)::int` }).from(profilesTable))[0]?.c === 0;
 
   const [created] = await db
     .insert(profilesTable)
-    .values({ userId, email, fullName, isAdmin: isFirstUser })
+    .values({
+      userId,
+      email: email || `${userId}@unknown.local`,
+      fullName: fullName ?? null,
+      isAdmin: isFirstUser,
+    })
     .returning();
   return created;
 }
 
 router.get("/me", requireAuth, async (req, res: Response) => {
-  const userId = (req as AuthedRequest).userId;
-  const profile = await ensureProfile(userId);
+  const r = req as AuthedRequest;
+  const profile = await ensureProfile(r.userId, r.userEmail, r.userName);
   res.json(profile);
 });
 
 router.patch("/me", requireAuth, async (req, res: Response) => {
-  const userId = (req as AuthedRequest).userId;
-  await ensureProfile(userId);
+  const r = req as AuthedRequest;
+  const userId = r.userId;
+  await ensureProfile(userId, r.userEmail, r.userName);
   const parsed = UpdateMeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
@@ -61,8 +64,9 @@ router.patch("/me", requireAuth, async (req, res: Response) => {
 });
 
 router.get("/dashboard/summary", requireAuth, async (req, res: Response) => {
-  const userId = (req as AuthedRequest).userId;
-  const profile = await ensureProfile(userId);
+  const r = req as AuthedRequest;
+  const userId = r.userId;
+  const profile = await ensureProfile(userId, r.userEmail, r.userName);
 
   const serieFilter = profile.serie ? eq(lessonsTable.serie, profile.serie) : undefined;
 
