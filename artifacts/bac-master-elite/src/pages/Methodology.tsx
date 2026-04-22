@@ -3,12 +3,20 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
 import * as LucideIcons from "lucide-react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogTitle, DialogHeader } from "@/components/ui/dialog";
+import { ChevronDown } from "lucide-react";
 
 export default function MethodologyPage() {
   const { data, isLoading } = useListMethodology();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const card = data?.find((c) => c.id === openId);
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div>
@@ -16,37 +24,52 @@ export default function MethodologyPage() {
       {isLoading ? (
         <div className="text-sm text-gray-500">Chargement...</div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3 max-w-3xl">
           {data?.map((c) => {
-            const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[c.icon] || LucideIcons.BookOpen;
+            const Icon =
+              (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[c.icon] ||
+              LucideIcons.BookOpen;
+            const isOpen = openIds.has(c.id);
             return (
               <Card
                 key={c.id}
-                onClick={() => setOpenId(c.id)}
-                className="p-6 rounded-2xl border-0 shadow-sm hover-elevate cursor-pointer h-full"
+                className="rounded-2xl border-0 shadow-sm overflow-hidden"
                 data-testid={`card-methodology-${c.slug}`}
               >
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div className="font-semibold text-gray-900 mb-1">{c.title}</div>
-                <div className="text-sm text-gray-500 line-clamp-3">{c.summary}</div>
+                <button
+                  type="button"
+                  onClick={() => toggle(c.id)}
+                  className="w-full flex items-center gap-4 p-5 text-left hover:bg-gray-50 transition-colors"
+                  aria-expanded={isOpen}
+                  data-testid={`button-toggle-${c.slug}`}
+                >
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900">{c.title}</div>
+                    {!isOpen && (
+                      <div className="text-sm text-gray-500 line-clamp-1">{c.summary}</div>
+                    )}
+                  </div>
+                  <ChevronDown
+                    className={`w-5 h-5 text-gray-400 transition-transform shrink-0 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 pt-1 border-t border-gray-100">
+                    <article className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
+                      {c.content}
+                    </article>
+                  </div>
+                )}
               </Card>
             );
           })}
         </div>
       )}
-
-      <Dialog open={!!openId} onOpenChange={(o) => !o && setOpenId(null)}>
-        <DialogContent className="max-w-2xl rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{card?.title}</DialogTitle>
-          </DialogHeader>
-          <article className="prose prose-blue max-w-none whitespace-pre-wrap text-gray-800 max-h-[60vh] overflow-y-auto">
-            {card?.content}
-          </article>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

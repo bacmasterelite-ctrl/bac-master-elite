@@ -4,10 +4,32 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/PageHeader";
-import { Bot, Send, ImagePlus, Crown, Loader2, X } from "lucide-react";
+import { Bot, Send, ImagePlus, Crown, Loader2, X, Lock } from "lucide-react";
 import { Link } from "wouter";
 
 interface Msg { role: "user" | "assistant"; content: string; image?: string }
+
+const FREE_MESSAGE_LIMIT = 3;
+
+const PLAIN_INSTRUCTION =
+  "IMPORTANT: Réponds en texte brut uniquement. N'utilise PAS de Markdown (pas de **gras**, pas de *italique*, pas de #titres, pas de listes avec - ou *, pas de tableaux, pas de blocs de code). Écris uniquement des paragraphes simples séparés par des sauts de ligne.";
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, (m) => m.replace(/```\w*\n?|```/g, ""))
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, (m) => m)
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
+    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^>\s?/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 export default function AITutorPage() {
   const { data: profile } = useGetMe();
@@ -25,12 +47,14 @@ export default function AITutorPage() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, chat.isPending]);
 
   const isPremium = !!profile?.isPremium;
+  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const limitReached = !isPremium && userMessageCount >= FREE_MESSAGE_LIMIT;
+  const remaining = Math.max(0, FREE_MESSAGE_LIMIT - userMessageCount);
 
   const handleFile = async (file: File) => {
     if (!isPremium) return;
     setUploading(true);
     try {
-      // Show preview immediately
       const reader = new FileReader();
       reader.onload = () => setImageBase64(reader.result as string);
       reader.readAsDataURL(file);
@@ -43,7 +67,6 @@ export default function AITutorPage() {
         body: file,
         headers: { "Content-Type": file.type },
       });
-      // Use the uploadURL stripped of query string for OpenAI image_url
       setImageUrl(res.uploadURL.split("?")[0] ?? null);
     } catch (e) {
       console.log("ERREUR_APP:", e);
@@ -53,6 +76,7 @@ export default function AITutorPage() {
   };
 
   const send = async () => {
+    if (limitReached) return;
     if (!input.trim() && !imageUrl) return;
     const userMsg: Msg = { role: "user", content: input || "(image)", image: imageBase64 ?? undefined };
     const newMessages = [...messages, userMsg];
@@ -61,15 +85,19 @@ export default function AITutorPage() {
     const sentImage = imageUrl;
     setImageUrl(null);
     setImageBase64(null);
+
+    const apiMessages = newMessages.map((m, idx) =>
+      idx === 0 && m.role === "user"
+        ? { role: m.role, content: `${PLAIN_INSTRUCTION}\n\n${m.content}` }
+        : { role: m.role, content: m.content },
+    );
+
     try {
       const res = await chat.mutateAsync({
-        data: {
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          imageUrl: sentImage,
-        },
+        data: { messages: apiMessages, imageUrl: sentImage },
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
-    } catch (e) {
+      setMessages((prev) => [...prev, { role: "assistant", content: stripMarkdown(res.reply) }]);
+    } catch {
       setMessages((prev) => [...prev, { role: "assistant", content: "Désolé, une erreur est survenue. Réessaye." }]);
     }
   };
@@ -80,6 +108,22 @@ export default function AITutorPage() {
         title="Tuteur IA"
         subtitle="Pose tes questions, demande des explications, vérifie tes réponses."
       />
+
+      {!isPremium && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-900">
+          <span className="flex items-center gap-2">
+            <Crown className="w-4 h-4 text-amber-500" />
+            {limitReached
+              ? "Limite gratuite atteinte (3 messages)."
+              : `Mode gratuit — ${remaining} message${remaining > 1 ? "s" : ""} restant${remaining > 1 ? "s" : ""}.`}
+          </span>
+          <Link href="/premium">
+            <Button size="sm" className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white" data-testid="button-go-premium-banner">
+              Passer au Premium
+            </Button>
+          </Link>
+        </div>
+      )}
 
       <Card className="flex-1 rounded-2xl border-0 shadow-sm overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -107,6 +151,22 @@ export default function AITutorPage() {
               </div>
             </div>
           )}
+          {limitReached && (
+            <div className="flex flex-col items-center justify-center text-center py-6 px-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center mb-3">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="font-semibold text-gray-900">Tu as utilisé tes 3 messages gratuits</div>
+              <div className="text-sm text-gray-600 mt-1 max-w-sm">
+                Passe au Premium pour continuer à discuter avec BAC TUTOR sans limite et envoyer des images.
+              </div>
+              <Link href="/premium">
+                <Button className="mt-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white" data-testid="button-go-premium-block">
+                  <Crown className="w-4 h-4 mr-2" /> Passer au Premium
+                </Button>
+              </Link>
+            </div>
+          )}
           <div ref={endRef} />
         </div>
 
@@ -125,8 +185,9 @@ export default function AITutorPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Pose ta question ici..."
+              placeholder={limitReached ? "Passe au Premium pour continuer..." : "Pose ta question ici..."}
               rows={2}
+              disabled={limitReached}
               className="rounded-xl resize-none"
               data-testid="textarea-question"
             />
@@ -159,7 +220,7 @@ export default function AITutorPage() {
             )}
             <Button
               onClick={send}
-              disabled={chat.isPending || (!input.trim() && !imageUrl)}
+              disabled={chat.isPending || limitReached || (!input.trim() && !imageUrl)}
               className="rounded-xl shrink-0 h-12 w-12"
               size="icon"
               data-testid="button-send"
@@ -167,7 +228,7 @@ export default function AITutorPage() {
               <Send className="w-5 h-5" />
             </Button>
           </div>
-          {!isPremium && (
+          {!isPremium && !limitReached && (
             <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
               <Crown className="w-3 h-3 text-amber-500" />
               L'analyse d'image est réservée aux membres Premium. <Link href="/premium"><a className="text-blue-600 font-medium hover:underline">Découvrir</a></Link>
