@@ -26,8 +26,9 @@ export default function OnboardingPage() {
 
   const update = useUpdateMe({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries();
+      onSuccess: async (data) => {
+        queryClient.setQueryData(["/api/me"], data);
+        await queryClient.invalidateQueries();
         navigate("/");
       },
     },
