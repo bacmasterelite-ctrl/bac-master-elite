@@ -46,7 +46,7 @@ export default function AITutorPage() {
       // Use the uploadURL stripped of query string for OpenAI image_url
       setImageUrl(res.uploadURL.split("?")[0] ?? null);
     } catch (e) {
-      console.error(e);
+      console.log("ERREUR_APP:", e);
     } finally {
       setUploading(false);
     }
