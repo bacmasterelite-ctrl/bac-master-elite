@@ -56,7 +56,8 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // Change "dist/public" par juste "dist"
+    outDir: path.resolve(import.meta.dirname, "dist"), 
     emptyOutDir: true,
   },
   server: {
