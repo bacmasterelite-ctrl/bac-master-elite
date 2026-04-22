@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useGetMe, useAiChat, useRequestUploadUrl } from "@workspace/api-client-react";
+import { useGetMe, useAiChat, useRequestUploadUrl, getGetMeQueryKey } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +32,13 @@ function stripMarkdown(text: string): string {
 }
 
 export default function AITutorPage() {
-  const { data: profile } = useGetMe();
+  const { data: profile } = useGetMe({
+    query: {
+      queryKey: getGetMeQueryKey(),
+      refetchOnWindowFocus: true,
+      refetchInterval: 15_000,
+    },
+  });
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -97,8 +103,23 @@ export default function AITutorPage() {
         data: { messages: apiMessages, imageUrl: sentImage },
       });
       setMessages((prev) => [...prev, { role: "assistant", content: stripMarkdown(res.reply) }]);
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Désolé, une erreur est survenue. Réessaye." }]);
+    } catch (e) {
+      const err = e as { status?: number; data?: { error?: string }; message?: string };
+      const detail =
+        err?.data?.error ||
+        (err?.status === 401
+          ? "Session expirée. Reconnecte-toi."
+          : err?.status === 403
+          ? "Accès refusé pour cette action."
+          : err?.status === 429
+          ? "Trop de requêtes, attends quelques secondes."
+          : err?.message) ||
+        "Erreur inconnue.";
+      console.log("ERREUR_APP:", e);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Désolé, une erreur est survenue : ${detail}` },
+      ]);
     }
   };
 

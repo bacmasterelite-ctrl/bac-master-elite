@@ -1,5 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import {
   DropdownMenu,
@@ -49,8 +51,25 @@ const ADMIN_NAV = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { data: profile } = useGetMe();
+  const queryClient = useQueryClient();
+  const { data: profile } = useGetMe({
+    query: {
+      queryKey: getGetMeQueryKey(),
+      refetchOnWindowFocus: true,
+      refetchInterval: 20_000,
+    },
+  });
   const { user, signOut } = useSupabaseAuth();
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [queryClient]);
 
   const initial = (profile?.fullName || profile?.email || user?.email || "?")[0]?.toUpperCase();
 
