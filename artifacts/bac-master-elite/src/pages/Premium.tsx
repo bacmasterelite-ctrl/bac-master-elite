@@ -92,7 +92,7 @@ export default function PremiumPage() {
 
   return (
     <div>
-      <PageHeader title="Passe Premium" subtitle="Débloque tout le potentiel de BAC MASTER ELITE." />
+      <PageHeader title="Passe Premium" subtitle="Débloquez tout le potentiel de BAC MASTER ELITE." />
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-8 rounded-2xl border-0 shadow-sm bg-gradient-to-br from-amber-400 to-orange-500 text-white">
           <Crown className="w-10 h-10 mb-4" />
