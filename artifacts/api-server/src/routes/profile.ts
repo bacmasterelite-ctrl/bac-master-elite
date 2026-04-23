@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { eq, sql, desc, and, gte } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { db } from "../lib/db";
 import {
   profilesTable,
@@ -9,7 +9,6 @@ import {
   annalsTable,
 } from "@workspace/db/schema";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
-import { UpdateMeBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -46,20 +45,40 @@ router.get("/me", requireAuth, async (req, res: Response) => {
   res.json(profile);
 });
 
+// ✅ ROUTE CORRIGÉE - Accepte fullName et serie sans validation stricte
 router.patch("/me", requireAuth, async (req, res: Response) => {
   const r = req as AuthedRequest;
   const userId = r.userId;
+  
+  // Assure que le profil existe
   await ensureProfile(userId, r.userEmail, r.userName);
-  const parsed = UpdateMeBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid body" });
+  
+  // Récupère uniquement les champs autorisés
+  const { fullName, serie } = req.body;
+  
+  // Prépare l'objet de mise à jour
+  const updateData: Record<string, any> = {};
+  if (fullName !== undefined) updateData.fullName = fullName;
+  if (serie !== undefined) updateData.serie = serie;
+  
+  // Si rien à mettre à jour, renvoyer le profil actuel
+  if (Object.keys(updateData).length === 0) {
+    const [current] = await db
+      .select()
+      .from(profilesTable)
+      .where(eq(profilesTable.userId, userId))
+      .limit(1);
+    res.json(current);
     return;
   }
+  
+  // Met à jour le profil
   const [updated] = await db
     .update(profilesTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(profilesTable.userId, userId))
     .returning();
+    
   res.json(updated);
 });
 
