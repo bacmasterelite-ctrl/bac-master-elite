@@ -1,19 +1,48 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { GraduationCap, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import {
+  GraduationCap,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  Loader2,
+  Calculator,
+  Beaker,
+  Globe2,
+  Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+const SERIES = [
+  {
+    code: "A",
+    titre: "Série A",
+    sub: "Littéraire",
+    icon: Globe2,
+    color: "from-fuchsia-500 to-violet-600",
+  },
+  {
+    code: "C",
+    titre: "Série C",
+    sub: "Mathématiques",
+    icon: Calculator,
+    color: "from-blue-600 to-cyan-500",
+  },
+  {
+    code: "D",
+    titre: "Série D",
+    sub: "Sciences",
+    icon: Beaker,
+    color: "from-emerald-500 to-teal-500",
+  },
+];
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -22,11 +51,19 @@ export default function Signup() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [serie, setSerie] = useState("D");
+  const [serie, setSerie] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!serie) {
+      toast({
+        title: "Choisissez votre série",
+        description: "La sélection de votre série est obligatoire pour personnaliser votre parcours.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSubmitting(true);
     const { error } = await signUp(email, password, { full_name: fullName, serie });
     setSubmitting(false);
@@ -36,7 +73,7 @@ export default function Signup() {
     }
     toast({
       title: "Compte créé !",
-      description: "Vérifiez vos emails pour confirmer votre compte.",
+      description: "Bienvenue sur BAC MASTER ELITE.",
     });
     setLocation("/dashboard");
   };
@@ -62,7 +99,7 @@ export default function Signup() {
           <h1 className="text-3xl font-bold tracking-tight">Créer votre compte</h1>
           <p className="mt-2 text-muted-foreground">Commencez gratuitement, sans carte bancaire.</p>
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-4">
+          <form onSubmit={onSubmit} className="mt-8 space-y-5">
             <div className="space-y-2">
               <Label htmlFor="name">Nom complet</Label>
               <div className="relative">
@@ -111,25 +148,55 @@ export default function Signup() {
                 />
               </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="serie">Votre série</Label>
-              <Select value={serie} onValueChange={setSerie}>
-                <SelectTrigger id="serie" data-testid="select-serie">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">Série A — Littéraire</SelectItem>
-                  <SelectItem value="C">Série C — Mathématiques</SelectItem>
-                  <SelectItem value="D">Série D — Sciences</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>
+                Votre série <span className="text-rose-600">*</span>
+              </Label>
+              <div className="grid grid-cols-3 gap-2">
+                {SERIES.map((s) => {
+                  const active = serie === s.code;
+                  return (
+                    <button
+                      type="button"
+                      key={s.code}
+                      onClick={() => setSerie(s.code)}
+                      className={cn(
+                        "relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-all hover-elevate",
+                        active
+                          ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                          : "border-border bg-card",
+                      )}
+                      data-testid={`serie-${s.code}`}
+                    >
+                      {active && (
+                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-white">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      )}
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${s.color} text-white shadow-sm`}
+                      >
+                        <s.icon className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-bold">{s.titre}</p>
+                      <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+                    </button>
+                  );
+                })}
+              </div>
+              {!serie && (
+                <p className="text-xs text-muted-foreground">
+                  Sélectionnez votre série pour personnaliser cours et exercices.
+                </p>
+              )}
             </div>
 
             <Button
               type="submit"
               size="lg"
               disabled={submitting}
-              className="w-full bg-hero-gradient text-white hover:opacity-90"
+              className="w-full rounded-full bg-hero-gradient text-white hover:opacity-90"
               data-testid="button-submit-signup"
             >
               {submitting ? (
@@ -164,9 +231,17 @@ export default function Signup() {
             </div>
             <span className="text-lg font-bold">BAC MASTER ELITE</span>
           </Link>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <h2 className="text-3xl font-bold leading-tight">Rejoignez 5 000+ élèves préparés à l'excellence.</h2>
-            <p className="mt-4 text-white/85">Cours • Exercices • Annales • Tuteur IA disponible 24/7</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-3xl font-bold leading-tight">
+              Rejoignez 5 000+ élèves préparés à l'excellence.
+            </h2>
+            <p className="mt-4 text-white/85">
+              Cours • Exercices • Annales • Tuteur IA disponible 24/7
+            </p>
           </motion.div>
           <p className="text-sm text-white/70">© {new Date().getFullYear()} BAC MASTER ELITE</p>
         </div>

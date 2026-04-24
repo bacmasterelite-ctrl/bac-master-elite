@@ -12,9 +12,16 @@ import {
   Menu,
   X,
   Sparkles,
+  User as UserIcon,
+  Trophy,
+  Crown,
+  ShieldCheck,
+  Compass,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { useProfile } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -22,16 +29,26 @@ const navItems = [
   { href: "/dashboard/cours", label: "Cours", icon: BookOpen },
   { href: "/dashboard/exercices", label: "Exercices", icon: PenLine },
   { href: "/dashboard/annales", label: "Annales", icon: ScrollText },
+  { href: "/dashboard/methodologie", label: "Méthodologie", icon: Compass },
+  { href: "/dashboard/astuces", label: "Astuces BAC", icon: Lightbulb },
   { href: "/dashboard/tuteur-ia", label: "Tuteur IA", icon: Brain, badge: "IA" },
+  { href: "/dashboard/leaderboard", label: "Classement", icon: Trophy },
+  { href: "/dashboard/profile", label: "Profil", icon: UserIcon },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const fullName = profile?.full_name ?? (user?.user_metadata?.full_name as string | undefined) ?? "Élève";
+  const serie = profile?.serie ?? (user?.user_metadata?.serie as string | undefined) ?? "—";
+  const isPremium = profile?.is_premium === true;
+  const isAdmin = profile?.is_admin === true;
+
   const initials =
-    (user?.user_metadata?.full_name as string | undefined)
+    fullName
       ?.split(" ")
       .map((p) => p[0])
       .slice(0, 2)
@@ -39,6 +56,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       .toUpperCase() ||
     user?.email?.[0]?.toUpperCase() ||
     "?";
+
+  const items = isAdmin
+    ? [...navItems, { href: "/dashboard/admin", label: "Admin", icon: ShieldCheck }]
+    : navItems;
 
   const Sidebar = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -61,8 +82,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-5">
-        {navItems.map((item) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {items.map((item) => {
           const active =
             item.href === "/dashboard"
               ? location === "/dashboard"
@@ -82,7 +103,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               <item.icon className={cn("h-4 w-4", active ? "text-blue-400" : "text-sidebar-foreground/60")} />
               <span className="flex-1">{item.label}</span>
-              {item.badge && (
+              {"badge" in item && item.badge && (
                 <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
                   {item.badge}
                 </span>
@@ -93,50 +114,61 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <div className="mb-3 rounded-2xl bg-gradient-to-br from-blue-600/20 to-emerald-500/20 p-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-emerald-300" />
-            <p className="text-xs font-bold">Passez à Premium</p>
+        {!isPremium && (
+          <div className="mb-3 rounded-2xl bg-gradient-to-br from-blue-600/20 to-emerald-500/20 p-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-emerald-300" />
+              <p className="text-xs font-bold">Passez à Premium</p>
+            </div>
+            <p className="mt-1 text-[11px] text-sidebar-foreground/70">
+              Cours, annales et IA en illimité.
+            </p>
+            <Link href="/dashboard/upgrade">
+              <Button size="sm" className="mt-3 w-full rounded-full bg-white text-blue-700 hover:bg-white/90">
+                <Crown className="mr-1 h-3.5 w-3.5" />
+                Découvrir
+              </Button>
+            </Link>
           </div>
-          <p className="mt-1 text-[11px] text-sidebar-foreground/70">
-            Accédez à tous les cours et annales corrigées illimités.
-          </p>
-          <Button size="sm" className="mt-3 w-full bg-white text-blue-700 hover:bg-white/90">
-            Découvrir
-          </Button>
-        </div>
+        )}
 
-        <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/40 p-2.5">
+        <Link
+          href="/dashboard/profile"
+          className="flex items-center gap-3 rounded-xl bg-sidebar-accent/40 p-2.5 hover-elevate"
+        >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-hero-gradient text-sm font-bold text-white">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-semibold">
-              {(user?.user_metadata?.full_name as string | undefined) ?? "Élève"}
-            </p>
-            <p className="truncate text-xs text-sidebar-foreground/60">{user?.email}</p>
+            <p className="truncate text-sm font-semibold">{fullName}</p>
+            <div className="flex items-center gap-1.5 text-xs text-sidebar-foreground/60">
+              <span>Série {serie}</span>
+              {isPremium && <Crown className="h-3 w-3 text-amber-400" />}
+            </div>
           </div>
           <button
-            onClick={signOut}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              signOut();
+            }}
             className="rounded-lg p-2 text-sidebar-foreground/70 hover-elevate"
             aria-label="Se déconnecter"
             data-testid="button-signout"
           >
             <LogOut className="h-4 w-4" />
           </button>
-        </div>
+        </Link>
       </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-sidebar-border lg:block">
         {Sidebar}
       </aside>
 
-      {/* Mobile sidebar */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -174,9 +206,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <p className="text-sm font-semibold">
-              Bonjour, {(user?.user_metadata?.full_name as string | undefined)?.split(" ")[0] ?? "Élève"} 👋
+              Bonjour, {fullName.split(" ")[0]} 👋
             </p>
           </div>
+          {isPremium ? (
+            <span className="hidden items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-700 sm:inline-flex">
+              <Crown className="h-3.5 w-3.5" />
+              Premium
+            </span>
+          ) : (
+            <Link href="/dashboard/upgrade">
+              <Button size="sm" className="hidden rounded-full bg-hero-gradient text-white hover:opacity-90 sm:inline-flex">
+                <Crown className="mr-1 h-3.5 w-3.5" />
+                Premium
+              </Button>
+            </Link>
+          )}
         </header>
 
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>

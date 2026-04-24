@@ -24,6 +24,27 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+async function ensureProfile(user: User) {
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    user.email?.split("@")[0] ??
+    "Élève";
+  const serie = (user.user_metadata?.serie as string | undefined) ?? "D";
+
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      full_name: fullName,
+      serie,
+    },
+    { onConflict: "id", ignoreDuplicates: false },
+  );
+  if (error) {
+    console.warn("[profile upsert]", error.message);
+  }
+}
+
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -40,10 +61,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+        if (event === "SIGNED_IN" && newSession?.user) {
+          void ensureProfile(newSession.user);
+        }
       },
     );
 
@@ -66,11 +90,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null };
       },
       signUp: async (email, password, metadata) => {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: metadata },
         });
+        if (!error && data.user) {
+          await ensureProfile(data.user);
+        }
         return { error: error?.message ?? null };
       },
       signOut: async () => {

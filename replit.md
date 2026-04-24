@@ -37,6 +37,13 @@ Premium French-language BAC prep platform.
 - **Data hooks**: `src/lib/queries.ts` (TanStack Query, safe fallbacks when tables are empty)
 - **Theme**: gradient `#1e40af → #10b981` exposed as `.bg-hero-gradient` / `.text-hero-gradient` in `src/index.css`. Tailwind v4 with HSL design tokens (primary blue, secondary green, dark sidebar)
 - **Layout**: `src/components/DashboardLayout.tsx` (responsive sidebar + mobile drawer) used by all `/dashboard/*` pages
-- **Routes**: `/`, `/login`, `/signup` (public-only), `/dashboard`, `/dashboard/cours`, `/dashboard/exercices`, `/dashboard/annales`, `/dashboard/tuteur-ia` (protected)
+- **Routes**: `/`, `/login`, `/signup` (public-only), `/dashboard`, `/dashboard/cours`, `/dashboard/exercices`, `/dashboard/annales`, `/dashboard/methodologie`, `/dashboard/astuces`, `/dashboard/tuteur-ia`, `/dashboard/upgrade`, `/dashboard/profile`, `/dashboard/leaderboard`, `/dashboard/admin` (protected; admin guarded by `profiles.is_admin`)
 - **Charts**: Recharts (Area, Bar, Pie) on the dashboard
+- **Series filtering**: signup REQUIRES choosing serie A/C/D; `Dashboard` and `Cours` filter content by `profile.serie` via `src/lib/subjects.ts` (`SUBJECTS_BY_SERIE`, `styleForSubject`)
+- **Premium payments**: Mobile Money flow (Wave / MTN / Orange) on `/dashboard/upgrade` — copies number `+225 07 00 00 00 00`, 5 000 FCFA, screenshot proof uploads to Supabase storage `proofs` bucket and creates a row in `subscriptions` (status `en_attente`)
+- **Admin**: `/dashboard/admin` lists pending subscriptions with signed-URL screenshot preview Dialog; "Valider" sets `profiles.is_premium = true`
+- **Profile**: `/dashboard/profile` shows dynamic name/email/serie + Premium/Gratuit chip + 8-badge "Mes Badges" grid (unlocked by `profiles.points`)
+- **Leaderboard**: `/dashboard/leaderboard` ranks by `profiles.points` desc with top-3 podium
+- **Visual style**: white cards with colored left borders per matière (`border-l-4 border-l-{color}`), Lucide icons, rounded-full blue/hero-gradient buttons
+- **Supabase schema**: SQL migration at `supabase/migrations/001_init.sql` — paste into Supabase SQL Editor once. Adds profile columns (`full_name`, `email`, `serie`, `is_premium`, `is_admin`, `points`, `avatar_url`), auto-profile trigger on `auth.users` insert, `subscriptions` table, RLS policies, `proofs` storage bucket. To make the first admin: `update profiles set is_admin = true where email = 'YOU';`
 - **Vercel**: `vercel.json` provides SPA rewrites and the build/output config

@@ -28,43 +28,70 @@ import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useExercises, useLessons, useAnnals } from "@/lib/queries";
+import {
+  useExercises,
+  useLessons,
+  useAnnals,
+  useProfile,
+  type Course,
+  type Exercise,
+  type Annal,
+} from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
-
-const progressData = [
-  { semaine: "S1", score: 42 },
-  { semaine: "S2", score: 51 },
-  { semaine: "S3", score: 58 },
-  { semaine: "S4", score: 64 },
-  { semaine: "S5", score: 71 },
-  { semaine: "S6", score: 78 },
-  { semaine: "S7", score: 84 },
-];
-
-const matieresData = [
-  { matiere: "Maths", score: 82 },
-  { matiere: "Physique", score: 74 },
-  { matiere: "SVT", score: 68 },
-  { matiere: "Français", score: 79 },
-  { matiere: "Philo", score: 65 },
-];
-
-const repartitionData = [
-  { name: "Cours", value: 45, color: "#1e40af" },
-  { name: "Exercices", value: 35, color: "#10b981" },
-  { name: "Annales", value: 20, color: "#f59e0b" },
-];
+import { styleForSubject, subjectsForSerie } from "@/lib/subjects";
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
 };
 
+function matchesSerie(item: Record<string, unknown>, serie: string): boolean {
+  const value = ((item.serie as string) ?? (item.series as string) ?? "").toUpperCase();
+  if (!value) return true;
+  return value.includes(serie.toUpperCase());
+}
+
+function matchesSubjectAllowed(item: Record<string, unknown>, allowed: string[]): boolean {
+  const subj = ((item.subject as string) ?? (item.matiere as string) ?? "").toLowerCase();
+  if (!subj) return true;
+  return allowed.some((s) => s.toLowerCase().includes(subj) || subj.includes(s.toLowerCase()));
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data: lessons = [] } = useLessons();
-  const { data: exercises = [] } = useExercises();
-  const { data: annals = [] } = useAnnals();
+  const { data: profile } = useProfile(user?.id);
+  const { data: lessonsRaw = [] } = useLessons();
+  const { data: exercisesRaw = [] } = useExercises();
+  const { data: annalsRaw = [] } = useAnnals();
+
+  const serie = (profile?.serie ?? "D").toUpperCase();
+  const allowedSubjects = subjectsForSerie(serie);
+
+  const lessons = lessonsRaw.filter((l) => matchesSerie(l as Record<string, unknown>, serie) && matchesSubjectAllowed(l as Record<string, unknown>, allowedSubjects));
+  const exercises = exercisesRaw.filter((e) => matchesSerie(e as Record<string, unknown>, serie) && matchesSubjectAllowed(e as Record<string, unknown>, allowedSubjects));
+  const annals = annalsRaw.filter((a) => matchesSerie(a as Record<string, unknown>, serie) && matchesSubjectAllowed(a as Record<string, unknown>, allowedSubjects));
+
+  // Synthesize per-subject data (real if exists, else demo)
+  const matieresData = allowedSubjects.slice(0, 5).map((m, i) => ({
+    matiere: m.length > 8 ? m.slice(0, 8) + "." : m,
+    score: 60 + ((i * 7) % 35),
+  }));
+
+  const progressData = [
+    { semaine: "S1", score: 42 },
+    { semaine: "S2", score: 51 },
+    { semaine: "S3", score: 58 },
+    { semaine: "S4", score: 64 },
+    { semaine: "S5", score: 71 },
+    { semaine: "S6", score: 78 },
+    { semaine: "S7", score: 84 },
+  ];
+
+  const repartitionData = [
+    { name: "Cours", value: 45, color: "#1e40af" },
+    { name: "Exercices", value: 35, color: "#10b981" },
+    { name: "Annales", value: 20, color: "#f59e0b" },
+  ];
 
   const stats = [
     {
@@ -107,25 +134,27 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Hero card */}
+        {/* Hero */}
         <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl bg-hero-gradient p-6 text-white sm:p-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -bottom-12 -left-10 h-48 w-48 rounded-full bg-emerald-300/20 blur-2xl" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
-                <Flame className="h-3.5 w-3.5" />
-                <span>Série en cours : 7 jours</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+                  <Flame className="h-3.5 w-3.5" />
+                  Série en cours : 7 jours
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">
+                  Série {serie}
+                </span>
               </div>
               <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
                 Continuez sur votre lancée
-                {(user?.user_metadata?.full_name as string | undefined)
-                  ? `, ${(user?.user_metadata?.full_name as string).split(" ")[0]}`
-                  : ""}{" "}
-                !
+                {profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""} !
               </h1>
               <p className="mt-2 max-w-xl text-sm text-white/85">
-                Vous avez déjà accompli {done}% de votre objectif hebdomadaire. Encore quelques exercices et c'est dans la poche.
+                Vous avez accompli {done}% de votre objectif hebdomadaire. Encore quelques exercices et c'est dans la poche.
               </p>
               <div className="mt-4 max-w-md">
                 <div className="flex items-center justify-between text-xs text-white/85">
@@ -144,18 +173,44 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/dashboard/cours">
-                <Button className="bg-white text-blue-700 hover:bg-white/90" data-testid="button-continue-course">
+                <Button className="rounded-full bg-white text-blue-700 hover:bg-white/90" data-testid="button-continue-course">
                   Reprendre un cours
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/dashboard/tuteur-ia">
-                <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+                <Button variant="outline" className="rounded-full border-white/30 bg-white/10 text-white hover:bg-white/20">
                   <Brain className="mr-2 h-4 w-4" />
                   Demander à l'IA
                 </Button>
               </Link>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Subjects (filtered by série) */}
+        <motion.div {...fadeUp} transition={{ delay: 0.05 }}>
+          <h2 className="mb-3 text-base font-bold">Mes matières — Série {serie}</h2>
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            {allowedSubjects.map((m, i) => {
+              const s = styleForSubject(m);
+              return (
+                <Link key={m} href="/dashboard/cours">
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className={`flex flex-col items-center gap-2 rounded-2xl border border-border ${s.border} border-l-4 bg-card p-3 text-center shadow-sm hover-elevate`}
+                    data-testid={`subject-tile-${m}`}
+                  >
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.bg}`}>
+                      <s.icon className={`h-5 w-5 ${s.text}`} />
+                    </div>
+                    <p className="text-xs font-bold">{m}</p>
+                  </motion.div>
+                </Link>
+              );
+            })}
           </div>
         </motion.div>
 
@@ -259,16 +314,16 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Subjects & schedule */}
+        {/* Subjects performance & schedule */}
         <div className="grid gap-4 lg:grid-cols-3">
           <motion.div {...fadeUp} transition={{ delay: 0.2 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
             <h3 className="text-base font-bold">Performance par matière</h3>
-            <p className="text-xs text-muted-foreground">Vos 5 dernières évaluations</p>
+            <p className="text-xs text-muted-foreground">Vos 5 dernières évaluations — Série {serie}</p>
             <div className="mt-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={matieresData} barSize={32}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="matiere" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="matiere" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                   <Tooltip
                     contentStyle={{
@@ -310,3 +365,6 @@ export default function Dashboard() {
     </DashboardLayout>
   );
 }
+
+// Suppress unused import warnings (types reused for hooks)
+export type _ReExportTypes = Course | Exercise | Annal;

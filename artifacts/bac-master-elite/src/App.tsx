@@ -15,6 +15,12 @@ import Cours from "@/pages/Cours";
 import Exercices from "@/pages/Exercices";
 import Annales from "@/pages/Annales";
 import TuteurIA from "@/pages/TuteurIA";
+import Methodologie from "@/pages/Methodologie";
+import AstucesBAC from "@/pages/AstucesBAC";
+import Upgrade from "@/pages/Upgrade";
+import Profile from "@/pages/Profile";
+import Leaderboard from "@/pages/Leaderboard";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -88,9 +94,39 @@ function AppRoutes() {
           <Annales />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/methodologie">
+        <ProtectedRoute>
+          <Methodologie />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/astuces">
+        <ProtectedRoute>
+          <AstucesBAC />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/tuteur-ia">
         <ProtectedRoute>
           <TuteurIA />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/upgrade">
+        <ProtectedRoute>
+          <Upgrade />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/profile">
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/leaderboard">
+        <ProtectedRoute>
+          <Leaderboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin">
+        <ProtectedRoute>
+          <Admin />
         </ProtectedRoute>
       </Route>
 
