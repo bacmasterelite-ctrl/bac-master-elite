@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-3.11"]
 
 [deployment]
 router = "application"
@@ -21,15 +21,51 @@ timeoutMs = 20000
 
 [[ports]]
 localPort = 3000
-externalPort = 3003
+externalPort = 6000
 
 [[ports]]
 localPort = 3001
+externalPort = 8000
+
+[[ports]]
+localPort = 3002
+externalPort = 8008
+
+[[ports]]
+localPort = 3003
+externalPort = 8080
+
+[[ports]]
+localPort = 5173
+externalPort = 5173
+
+[[ports]]
+localPort = 5174
+externalPort = 3001
+
+[[ports]]
+localPort = 5175
+externalPort = 80
+
+[[ports]]
+localPort = 5176
+externalPort = 3002
+
+[[ports]]
+localPort = 5177
 externalPort = 4200
 
 [[ports]]
+localPort = 5178
+externalPort = 6800
+
+[[ports]]
+localPort = 8000
+externalPort = 9000
+
+[[ports]]
 localPort = 8080
-externalPort = 8080
+externalPort = 8099
 
 [[ports]]
 localPort = 8081
@@ -41,12 +77,11 @@ externalPort = 3000
 
 [[ports]]
 localPort = 8083
-externalPort = 3001
+externalPort = 3003
 
 [[ports]]
 localPort = 8084
-externalPort = 3002
+externalPort = 5000
 
-[[ports]]
-localPort = 24102
-externalPort = 80
+[nix]
+packages = ["psmisc", "csslint", "nano"]

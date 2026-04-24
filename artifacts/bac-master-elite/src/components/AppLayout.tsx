@@ -1,246 +1,159 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
-import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon } from "lucide-react";
-import {
-  LayoutDashboard,
-  BookOpen,
-  GraduationCap,
-  PenSquare,
-  FileText,
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  GraduationCap, 
+  FileText, 
   Lightbulb,
   Trophy,
   Bot,
   Crown,
-  Users,
-  CreditCard,
-  BarChart3,
+  User,
   Menu,
   X,
+  LogOut,
+  ChevronLeft
 } from "lucide-react";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
-const NAV = [
+const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Tableau de bord" },
   { href: "/subjects", icon: BookOpen, label: "Matières" },
   { href: "/lessons", icon: GraduationCap, label: "Cours" },
-  { href: "/exercises", icon: PenSquare, label: "Exercices" },
+  { href: "/exercises", icon: FileText, label: "Exercices" },
   { href: "/annals", icon: FileText, label: "Annales" },
-  { href: "/methodology", icon: Lightbulb, label: "Méthodologie" },
+  { href: "/methodology", icon: Lightbulb, label: "Méthode & Astuces" },
   { href: "/ranking", icon: Trophy, label: "Classement" },
   { href: "/ai-tutor", icon: Bot, label: "Tuteur IA" },
   { href: "/premium", icon: Crown, label: "Premium" },
-];
-
-const ADMIN_NAV = [
-  { href: "/admin/stats", icon: BarChart3, label: "Statistiques" },
-  { href: "/admin/users", icon: Users, label: "Utilisateurs" },
-  { href: "/admin/payments", icon: CreditCard, label: "Paiements" },
+  { href: "/profile", icon: User, label: "Profil" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [location, navigate] = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const queryClient = useQueryClient();
-  const { data: profile } = useGetMe({
-    query: {
-      queryKey: getGetMeQueryKey(),
-      refetchOnWindowFocus: true,
-      refetchInterval: 20_000,
-    },
-  });
-  const { user, signOut } = useSupabaseAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [location] = useLocation();
+  const [isPremium, setIsPremium] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    async function checkPremium() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_premium")
+          .eq("id", user.id)
+          .single();
+        setIsPremium(profile?.is_premium === true);
       }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [queryClient]);
+    }
+    checkPremium();
+  }, []);
 
-  const initial = (profile?.fullName || profile?.email || user?.email || "?")[0]?.toUpperCase();
-
-  const UserMenu = () => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-semibold flex items-center justify-center shrink-0 hover:opacity-90"
-          data-testid="button-user-menu"
-        >
-          {initial}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 rounded-xl">
-        <div className="px-3 py-2 text-xs text-gray-500 truncate">{user?.email}</div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
-          <UserIcon className="w-4 h-4 mr-2" /> Mon profil
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={async () => {
-            await signOut();
-            navigate("/login");
-          }}
-          data-testid="menu-signout"
-          className="text-red-600 focus:text-red-700"
-        >
-          <LogOut className="w-4 h-4 mr-2" /> Déconnexion
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  const NavLinks = ({ items }: { items: typeof NAV }) => (
-    <nav className="space-y-1">
-      {items.map((item) => {
-        const active =
-          location === item.href ||
-          (item.href !== "/" && location.startsWith(item.href));
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => setMobileOpen(false)}
-            data-testid={`link-${item.href.replace(/\//g, "-") || "home"}`}
-          >
-            <a
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                active
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                  : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-              }`}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </a>
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Déconnexion réussie" });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile top bar */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-2 -ml-2 text-gray-700"
-          data-testid="button-mobile-menu"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b z-50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-            <GraduationCap className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-gray-900">BAC MASTER</span>
+          <div>
+            <span className="font-bold text-gray-900">BAC MASTER</span>
+            <span className="text-xs text-gray-500 block -mt-1">ELITE</span>
+          </div>
         </div>
-        <UserMenu />
-      </header>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-50 bg-black/40"
-          onClick={() => setMobileOpen(false)}
-        >
-          <aside
-            className="absolute left-0 top-0 bottom-0 w-72 bg-white p-4 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-gray-900">BAC MASTER</div>
-                  <div className="text-[10px] text-gray-500 -mt-0.5">ELITE</div>
-                </div>
-              </div>
-              <button onClick={() => setMobileOpen(false)} className="p-1">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <NavLinks items={NAV} />
-            {profile?.isAdmin && (
-              <>
-                <div className="text-xs uppercase tracking-wider text-gray-500 mt-6 mb-2 px-3">
-                  Administration
-                </div>
-                <NavLinks items={ADMIN_NAV} />
-              </>
-            )}
-          </aside>
-        </div>
-      )}
-
-      <div className="lg:flex">
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-gray-200 lg:p-4">
-          <div className="flex items-center gap-2.5 px-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center">
-              <GraduationCap className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-gray-900">BAC MASTER</div>
-              <div className="text-[10px] text-gray-500 -mt-0.5 tracking-wider">ELITE</div>
-            </div>
-          </div>
-
-          <NavLinks items={NAV} />
-          {profile?.isAdmin && (
-            <>
-              <div className="text-xs uppercase tracking-wider text-gray-500 mt-6 mb-2 px-3">
-                Administration
-              </div>
-              <NavLinks items={ADMIN_NAV} />
-            </>
-          )}
-
-          <div className="mt-auto pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-3 px-2 py-2">
-              <UserMenu />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 truncate">
-                  {profile?.fullName || profile?.email}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {profile?.serie && (
-                    <Badge variant="secondary" className="h-5 text-[10px]">
-                      Série {profile.serie}
-                    </Badge>
-                  )}
-                  {profile?.isPremium && (
-                    <Badge className="h-5 text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100">
-                      <Crown className="w-3 h-3 mr-0.5" />Premium
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-10 max-w-7xl">
-          {children}
-        </main>
+        <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} className="rounded-xl">
+          {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </Button>
       </div>
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed top-0 left-0 z-40 h-full bg-white shadow-xl transition-all duration-300 ease-in-out
+        ${isMobile ? 'w-72' : 'w-64'}
+        ${isMobile ? (isMenuOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
+      `}>
+        <div className="flex flex-col h-full">
+          <div className="p-6 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <span className="font-bold text-xl text-gray-900">BAC MASTER</span>
+                <p className="text-xs text-gray-500 -mt-0.5">ELITE</p>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = location === item.href;
+              return (
+                <Link key={item.href} href={item.href} onClick={() => isMobile && setIsMenuOpen(false)}>
+                  <div className={`
+                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer
+                    ${isActive 
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 border border-blue-100' 
+                      : 'text-gray-600 hover:bg-gray-50'}
+                  `}>
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium">{item.label}</span>
+                    {item.label === "Premium" && !isPremium && (
+                      <span className="ml-auto text-[10px] bg-gradient-to-r from-amber-400 to-orange-400 text-white px-2 py-0.5 rounded-full">
+                        New
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="p-4 border-t">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              Déconnexion
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className={`${!isMobile ? 'lg:ml-64' : ''} pt-16 lg:pt-0 min-h-screen`}>
+        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+          {children}
+        </div>
+      </main>
+
+      {/* Overlay mobile */}
+      {isMobile && isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }

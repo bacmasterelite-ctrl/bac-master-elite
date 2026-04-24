@@ -1,43 +1,53 @@
 import { useState } from "react";
-import { useUpdateMe } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 const SERIES = [
   { id: "A", title: "Série A", desc: "Lettres, philosophie, langues" },
   { id: "C", title: "Série C", desc: "Maths, physique, sciences" },
   { id: "D", title: "Série D", desc: "Sciences naturelles, biologie" },
-] as const;
+];
 
 export default function OnboardingPage() {
-  const { user } = useSupabaseAuth();
-  const [serie, setSerie] = useState<"A" | "C" | "D" | "">("");
-  const meta = (user?.user_metadata ?? {}) as { full_name?: string; name?: string };
-  const [fullName, setFullName] = useState(meta.full_name || meta.name || "");
-  const queryClient = useQueryClient();
+  const { session } = useSupabaseAuth();
+  const [selectedSerie, setSelectedSerie] = useState<"A" | "C" | "D" | "">("");
+  const [fullName, setFullName] = useState(session?.user?.user_metadata?.full_name || "");
+  const [isPending, setIsPending] = useState(false);
   const [, navigate] = useLocation();
 
-  const update = useUpdateMe({
-    mutation: {
-      onSuccess: async (data) => {
-        queryClient.setQueryData(["/api/me"], data);
-        await queryClient.invalidateQueries();
-        navigate("/");
-      },
-    },
-  });
+  const submit = async () => {
+    if (!selectedSerie || !fullName) return;
+    setIsPending(true);
 
-  const submit = () => {
-    if (!serie) return;
-    update.mutate({ data: { serie, fullName } });
+    // Mettre à jour les métadonnées de l'utilisateur
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        full_name: fullName,
+        serie: selectedSerie
+      }
+    });
+
+    setIsPending(false);
+
+    if (!error) {
+      navigate("/");
+    } else {
+      console.error("Erreur mise à jour:", error);
+    }
   };
+
+  // Si l'utilisateur a déjà une série, rediriger vers dashboard
+  if (session?.user?.user_metadata?.serie) {
+    navigate("/");
+    return null;
+  }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-6">
@@ -63,7 +73,6 @@ export default function OnboardingPage() {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Ex. Aïcha Diop"
               className="mt-2"
-              data-testid="input-fullname"
             />
           </div>
 
@@ -71,14 +80,13 @@ export default function OnboardingPage() {
             <Label>Choisis ta série</Label>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {SERIES.map((s) => {
-                const active = serie === s.id;
+                const active = selectedSerie === s.id;
                 return (
                   <motion.button
                     key={s.id}
                     type="button"
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setSerie(s.id)}
-                    data-testid={`button-serie-${s.id}`}
+                    onClick={() => setSelectedSerie(s.id)}
                     className={`text-left p-4 rounded-2xl border-2 transition-all ${
                       active
                         ? "border-blue-600 bg-blue-50 shadow-md"
@@ -94,12 +102,11 @@ export default function OnboardingPage() {
           </div>
 
           <Button
-            disabled={!serie || update.isPending}
+            disabled={!selectedSerie || !fullName || isPending}
             onClick={submit}
             className="w-full rounded-xl h-12 text-base"
-            data-testid="button-submit-onboarding"
           >
-            {update.isPending ? "Enregistrement..." : "Commencer"}
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Commencer"}
           </Button>
         </div>
       </Card>

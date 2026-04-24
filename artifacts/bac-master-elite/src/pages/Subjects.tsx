@@ -1,54 +1,79 @@
-import { useGetMe, useListSubjects } from "@workspace/api-client-react";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/PageHeader";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function SubjectsPage() {
-  const { data: profile } = useGetMe();
-  const { data: subjects, isLoading } = useListSubjects(
-    profile?.serie ? { serie: profile.serie as "A" | "C" | "D" } : undefined,
-  );
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [serieName, setSerieName] = useState("");
+
+  useEffect(() => {
+    async function loadSubjects() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      
+      const userSerie = user.user_metadata?.serie;
+      
+      if (!userSerie) {
+        setLoading(false);
+        return;
+      }
+      
+      setSerieName(`Série ${userSerie}`);
+      
+      const { data: serie } = await supabase
+        .from("series")
+        .select("id")
+        .eq("name", `Série ${userSerie}`)
+        .single();
+      
+      if (!serie) {
+        setLoading(false);
+        return;
+      }
+      
+      const { data: subjectsData } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("serie_id", serie.id);
+      
+      setSubjects(subjectsData || []);
+      setLoading(false);
+    }
+    
+    loadSubjects();
+  }, []);
+
+  if (loading) {
+    return <div className="p-6 text-center">Chargement...</div>;
+  }
 
   return (
-    <div>
-      <PageHeader
-        title="Matières"
-        subtitle={`Explore les matières de la série ${profile?.serie ?? ""}`}
-      />
-      {isLoading ? (
-        <div className="text-sm text-gray-500">Chargement...</div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {subjects?.map((s, i) => (
-            <motion.div
-              key={s.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <Link href={`/lessons?subjectId=${s.id}`}>
-                <a data-testid={`link-subject-${s.slug}`}>
-                  <Card className="group p-6 rounded-2xl border-0 shadow-sm hover-elevate cursor-pointer h-full">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-bold mb-4"
-                      style={{ background: s.color }}
-                    >
-                      {s.name[0]}
-                    </div>
-                    <div className="text-lg font-semibold text-gray-900">{s.name}</div>
-                    <div className="text-xs text-gray-500 mt-1 line-clamp-2">{s.description}</div>
-                    <div className="mt-4 inline-flex items-center gap-1 text-sm text-blue-600 font-medium">
-                      Voir les cours <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                    </div>
-                  </Card>
-                </a>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      )}
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Matières</h1>
+        <p className="text-gray-500 mt-1">{serieName}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {subjects.map((s) => (
+          <Link key={s.id} href={`/lessons?subjectId=${s.id}`}>
+            <div className="p-5 bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-sm border border-blue-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-bold mb-3"
+                style={{ backgroundColor: s.color_code || '#3b82f6' }}
+              >
+                {s.title?.charAt(0) || '?'}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{s.title}</h3>
+              <p className="text-sm text-blue-600 mt-2">Voir les cours →</p>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
