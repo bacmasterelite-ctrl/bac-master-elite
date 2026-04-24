@@ -1,26 +1,99 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Loader2 } from "lucide-react";
+import {
+  SupabaseAuthProvider,
+  useAuth,
+} from "@/contexts/SupabaseAuthProvider";
+import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Dashboard from "@/pages/Dashboard";
+import Cours from "@/pages/Cours";
+import Exercices from "@/pages/Exercices";
+import Annales from "@/pages/Annales";
+import TuteurIA from "@/pages/TuteurIA";
 import NotFound from "@/pages/not-found";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 60_000,
+    },
+  },
+});
 
-function Home() {
+function FullPageSpinner() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
     </div>
   );
 }
 
-function Router() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <FullPageSpinner />;
+  if (!user) return <Redirect to="/" />;
+  return <>{children}</>;
+}
+
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <FullPageSpinner />;
+  if (user) return <Redirect to="/dashboard" />;
+  return <>{children}</>;
+}
+
+function AppRoutes() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/">
+        <PublicOnlyRoute>
+          <Landing />
+        </PublicOnlyRoute>
+      </Route>
+      <Route path="/login">
+        <PublicOnlyRoute>
+          <Login />
+        </PublicOnlyRoute>
+      </Route>
+      <Route path="/signup">
+        <PublicOnlyRoute>
+          <Signup />
+        </PublicOnlyRoute>
+      </Route>
+
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/cours">
+        <ProtectedRoute>
+          <Cours />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/exercices">
+        <ProtectedRoute>
+          <Exercices />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/annales">
+        <ProtectedRoute>
+          <Annales />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/tuteur-ia">
+        <ProtectedRoute>
+          <TuteurIA />
+        </ProtectedRoute>
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
@@ -29,12 +102,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <SupabaseAuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppRoutes />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </SupabaseAuthProvider>
     </QueryClientProvider>
   );
 }
