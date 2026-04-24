@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm --filter @workspace/bac-master-elite build",
-  "outputDirectory": "dist",
+  "outputDirectory": "artifacts/bac-master-elite/dist",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework":"vite",
   "rewrites": [
