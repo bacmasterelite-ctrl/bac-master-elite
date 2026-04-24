@@ -1,3 +1,12 @@
 [build]
-  command = "git clone https://github.com/flutter/flutter.git --depth 1 -b stable && export PATH=\"$PATH:$PWD/flutter/bin\" && flutter precache && flutter pub get && flutter build web --release"
-  publish = "build/web"
+  command = "pnpm install --frozen-lockfile && pnpm --filter @workspace/bac-master-elite build"
+  publish = "artifacts/bac-master-elite/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--version"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
