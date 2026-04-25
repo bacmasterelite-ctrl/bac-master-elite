@@ -12,17 +12,21 @@ import {
   Globe2,
   AlertCircle,
   Loader2,
+  Paperclip,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAIResponse, isGeminiConfigured } from "@/lib/gemini";
+import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from "@/lib/gemini";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile } from "@/lib/queries";
 
 type Message = {
   role: "user" | "ai";
   content: string;
+  imageUrl?: string;
   error?: boolean;
   id: string;
 };
@@ -33,6 +37,9 @@ const SUGGESTIONS = [
   { icon: BookOpen, text: "Qu'est-ce que la conscience selon Descartes ?" },
   { icon: Globe2, text: "Résume la décolonisation de l'Afrique." },
 ];
+
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB
+const ACCEPTED_MIMES = ["image/png", "image/jpeg", "image/webp"];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -70,12 +77,20 @@ export default function TuteurIA() {
     {
       id: uid(),
       role: "ai",
-      content: `Bonjour ! Je suis votre **tuteur IA** personnel pour la **Série ${serie}**.\n\nPosez-moi n'importe quelle question sur vos cours et je vous répondrai de façon claire et structurée. ✨`,
+      content: `Bonjour ! Je suis votre **professeur ivoirien IA** pour la **Série ${serie}**.\n\nPosez-moi une question, ou **envoyez-moi la photo d'un exercice** : je vous aiderai à le résoudre étape par étape. ✨`,
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<{
+    file: File;
+    dataUrl: string;
+    image: ImageInput;
+  } | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const configured = isGeminiConfigured();
 
@@ -83,17 +98,59 @@ export default function TuteurIA() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const send = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError(null);
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow reselecting the same file
+    if (!file) return;
 
-    const userMsg: Message = { id: uid(), role: "user", content: text };
+    if (!ACCEPTED_MIMES.includes(file.type)) {
+      setImageError("Format non supporté. Utilisez JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError("Image trop lourde (max 4 Mo).");
+      return;
+    }
+
+    try {
+      const { base64, dataUrl } = await fileToBase64(file);
+      setAttachedImage({
+        file,
+        dataUrl,
+        image: { base64, mimeType: file.type },
+      });
+    } catch {
+      setImageError("Impossible de lire l'image.");
+    }
+  };
+
+  const send = async (text: string, imageOverride?: ImageInput, imageDataUrl?: string) => {
+    const image = imageOverride ?? attachedImage?.image;
+    const dataUrl = imageDataUrl ?? attachedImage?.dataUrl;
+    const trimmed = text.trim();
+
+    if (!trimmed && !image) return;
+    if (isLoading) return;
+
+    const promptForUser = trimmed || (image ? "Aide-moi avec cet exercice." : "");
+    const userMsg: Message = {
+      id: uid(),
+      role: "user",
+      content: promptForUser,
+      imageUrl: dataUrl,
+    };
     setMessages((m) => [...m, userMsg]);
     setInput("");
+    setAttachedImage(null);
+    setImageError(null);
     setIsLoading(true);
 
     try {
-      const contextual = `Élève en Série ${serie}. Question : ${text}`;
-      const reply = await getAIResponse(contextual);
+      const contextual = `Élève en Série ${serie}. ${
+        image ? "Voici une photo qu'il/elle envoie. " : ""
+      }Question : ${promptForUser}`;
+      const reply = await getAIResponse(contextual, image);
       setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";
@@ -116,7 +173,7 @@ export default function TuteurIA() {
             <p className="text-sm font-semibold uppercase tracking-wider text-violet-600">IA</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Tuteur IA</h1>
             <p className="text-xs text-muted-foreground">
-              Propulsé par Google Gemini · Personnalisé pour la Série {serie}
+              Propulsé par Google Gemini · Personnalisé pour la Série {serie} · Analyse des photos
             </p>
           </div>
           <span
@@ -168,19 +225,33 @@ export default function TuteurIA() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+                  className={`max-w-[85%] space-y-2 rounded-2xl px-4 py-3 text-sm ${
                     m.role === "user"
-                      ? "whitespace-pre-wrap bg-blue-600 text-white"
+                      ? "bg-blue-600 text-white"
                       : m.error
                         ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
                         : "bg-muted text-foreground"
                   }`}
                   data-testid={`message-${m.role}`}
                 >
+                  {m.imageUrl && (
+                    <a
+                      href={m.imageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block overflow-hidden rounded-xl border border-white/30"
+                    >
+                      <img
+                        src={m.imageUrl}
+                        alt="Pièce jointe"
+                        className="max-h-56 w-auto object-cover"
+                      />
+                    </a>
+                  )}
                   {m.role === "ai" && !m.error ? (
                     <MarkdownMessage content={m.content} />
                   ) : (
-                    m.content
+                    <div className="whitespace-pre-wrap">{m.content}</div>
                   )}
                 </div>
               </motion.div>
@@ -223,18 +294,83 @@ export default function TuteurIA() {
           </div>
         )}
 
+        {(attachedImage || imageError) && (
+          <div className="mt-3">
+            {attachedImage && (
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-3 shadow-sm">
+                <img
+                  src={attachedImage.dataUrl}
+                  alt="Aperçu"
+                  className="h-14 w-14 rounded-xl object-cover"
+                />
+                <div className="flex-1 text-xs">
+                  <p className="font-semibold">{attachedImage.file.name}</p>
+                  <p className="text-muted-foreground">
+                    {(attachedImage.file.size / 1024).toFixed(0)} Ko · prêt à analyser
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAttachedImage(null)}
+                  className="rounded-full p-1.5 hover:bg-muted"
+                  aria-label="Retirer l'image"
+                  data-testid="button-remove-image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {imageError && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-rose-600">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {imageError}
+              </p>
+            )}
+          </div>
+        )}
+
         <form onSubmit={onSubmit} className="mt-4 flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_MIMES.join(",")}
+            onChange={handleFileChange}
+            className="hidden"
+            data-testid="input-file"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || !configured}
+            className="rounded-full"
+            aria-label="Joindre une image"
+            data-testid="button-attach"
+            title="Joindre une photo d'exercice"
+          >
+            {attachedImage ? (
+              <ImageIcon className="h-4 w-4 text-violet-600" />
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={configured ? "Posez votre question..." : "IA indisponible"}
+            placeholder={
+              configured
+                ? attachedImage
+                  ? "Décrivez ce que vous voulez (optionnel)..."
+                  : "Posez votre question ou joignez une photo..."
+                : "IA indisponible"
+            }
             disabled={isLoading || !configured}
             className="rounded-full"
             data-testid="input-question"
           />
           <Button
             type="submit"
-            disabled={isLoading || !configured || !input.trim()}
+            disabled={isLoading || !configured || (!input.trim() && !attachedImage)}
             className="rounded-full bg-hero-gradient text-white hover:opacity-90"
             data-testid="button-send"
           >
