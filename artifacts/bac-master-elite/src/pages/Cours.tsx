@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -141,12 +142,14 @@ export default function Cours() {
   const selectedSubject = params.get("subject");
   const params = new URLSearchParams(window.location.search);
   const selectedSubject = params.get("subject");
+  const [location] = useLocation();
+  const params = new URLSearchParams(window.location.search);
+  const selectedSubject = params.get("subject");
+
   const filtered = courses.filter((c) => {
-    const matchesText =
-      c.titre.toLowerCase().includes(q.toLowerCase()) ||
-      c.matiere.toLowerCase().includes(q.toLowerCase());
-    const matchesMatiere = activeMatiere === "Toutes" || c.matiere === activeMatiere;
-    return matchesText && matchesMatiere;
+    const matchesText = c.titre.toLowerCase().includes(query.toLowerCase());
+    const matchesSelected = !selectedSubject || c.matiere.toLowerCase() === selectedSubject.toLowerCase();
+    return matchesText && matchesSelected;
   });
 
   const matiereChips = ["Toutes", ...allowedSubjects];
