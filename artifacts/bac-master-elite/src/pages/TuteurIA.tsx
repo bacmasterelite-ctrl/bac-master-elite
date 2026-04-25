@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,13 +16,16 @@ import {
   Paperclip,
   X,
   ImageIcon,
+  Crown,
+  Lock,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from "@/lib/gemini";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
-import { useProfile } from "@/lib/queries";
+import { useProfile, usePremiumStatus } from "@/lib/queries";
+import { useDailyAILimit, FREE_AI_DAILY_LIMIT } from "@/lib/premium";
 
 type Message = {
   role: "user" | "ai";
@@ -38,7 +42,7 @@ const SUGGESTIONS = [
   { icon: Globe2, text: "Résume la décolonisation de l'Afrique." },
 ];
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_MIMES = ["image/png", "image/jpeg", "image/webp"];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -71,15 +75,11 @@ function MarkdownMessage({ content }: { content: string }) {
 export default function TuteurIA() {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const { isPremium } = usePremiumStatus(user?.id);
   const serie = profile?.serie ?? "D";
+  const limit = useDailyAILimit(user?.id);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: uid(),
-      role: "ai",
-      content: `Bonjour ! Je suis votre **professeur ivoirien IA** pour la **Série ${serie}**.\n\nPosez-moi une question, ou **envoyez-moi la photo d'un exercice** : je vous aiderai à le résoudre étape par étape. ✨`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [attachedImage, setAttachedImage] = useState<{
@@ -94,16 +94,37 @@ export default function TuteurIA() {
 
   const configured = isGeminiConfigured();
 
+  // Build the welcome message reactively (depends on premium status + serie)
+  useEffect(() => {
+    setMessages([
+      {
+        id: uid(),
+        role: "ai",
+        content: isPremium
+          ? `Bonjour ! Je suis votre **professeur ivoirien IA** pour la **Série ${serie}**.\n\nVous êtes membre **Premium** : posez autant de questions que vous voulez et envoyez-moi des **photos d'exercices** à analyser. ✨`
+          : `Bonjour ! Je suis votre **professeur ivoirien IA** pour la **Série ${serie}**.\n\nEn formule **gratuite**, vous avez ${FREE_AI_DAILY_LIMIT} questions par jour. Pour des questions illimitées et l'analyse de photos d'exercices, passez **Premium** 👑.`,
+      },
+    ]);
+    // We intentionally re-init when premium status flips
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPremium, serie]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
+  const blockedByQuota = !isPremium && limit.reached;
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setImageError(null);
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow reselecting the same file
+    e.target.value = "";
     if (!file) return;
 
+    if (!isPremium) {
+      setImageError("L'analyse de photos est réservée aux membres Premium.");
+      return;
+    }
     if (!ACCEPTED_MIMES.includes(file.type)) {
       setImageError("Format non supporté. Utilisez JPG, PNG ou WebP.");
       return;
@@ -125,13 +146,15 @@ export default function TuteurIA() {
     }
   };
 
-  const send = async (text: string, imageOverride?: ImageInput, imageDataUrl?: string) => {
-    const image = imageOverride ?? attachedImage?.image;
-    const dataUrl = imageDataUrl ?? attachedImage?.dataUrl;
+  const send = async (text: string) => {
+    const image = attachedImage?.image;
+    const dataUrl = attachedImage?.dataUrl;
     const trimmed = text.trim();
 
     if (!trimmed && !image) return;
     if (isLoading) return;
+    if (blockedByQuota) return;
+    if (image && !isPremium) return;
 
     const promptForUser = trimmed || (image ? "Aide-moi avec cet exercice." : "");
     const userMsg: Message = {
@@ -152,6 +175,7 @@ export default function TuteurIA() {
       }Question : ${promptForUser}`;
       const reply = await getAIResponse(contextual, image);
       setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
+      if (!isPremium) limit.increment();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";
       setMessages((m) => [...m, { id: uid(), role: "ai", content: message, error: true }]);
@@ -168,29 +192,40 @@ export default function TuteurIA() {
   return (
     <DashboardLayout>
       <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-4xl flex-col">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-sm font-semibold uppercase tracking-wider text-violet-600">IA</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Tuteur IA</h1>
-            <p className="text-xs text-muted-foreground">
-              Propulsé par Google Gemini · Personnalisé pour la Série {serie} · Analyse des photos
+            <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">
+              Tuteur IA
+            </h1>
+            <p className="truncate text-xs text-muted-foreground">
+              Propulsé par Google Gemini · Série {serie}
+              {isPremium ? " · Photos activées" : ` · ${limit.remaining}/${FREE_AI_DAILY_LIMIT} questions restantes aujourd'hui`}
             </p>
           </div>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-              configured
-                ? "bg-emerald-500/15 text-emerald-700"
-                : "bg-rose-500/15 text-rose-700"
-            }`}
-            data-testid="ai-status"
-          >
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
             <span
-              className={`h-1.5 w-1.5 animate-pulse rounded-full ${
-                configured ? "bg-emerald-500" : "bg-rose-500"
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                configured
+                  ? "bg-emerald-500/15 text-emerald-700"
+                  : "bg-rose-500/15 text-rose-700"
               }`}
-            />
-            {configured ? "En ligne" : "Hors ligne"}
-          </span>
+              data-testid="ai-status"
+            >
+              <span
+                className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                  configured ? "bg-emerald-500" : "bg-rose-500"
+                }`}
+              />
+              {configured ? "En ligne" : "Hors ligne"}
+            </span>
+            {isPremium && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                <Crown className="h-3 w-3" />
+                Premium
+              </span>
+            )}
+          </div>
         </div>
 
         {!configured && (
@@ -200,6 +235,10 @@ export default function TuteurIA() {
               Clé API Gemini manquante. Ajoutez la variable <code className="rounded bg-rose-100 px-1 dark:bg-rose-900/40">VITE_GEMINI_API_KEY</code> dans les secrets.
             </p>
           </div>
+        )}
+
+        {!isPremium && configured && (
+          <FreeTierBanner remaining={limit.remaining} reached={limit.reached} />
         )}
 
         <div
@@ -271,7 +310,7 @@ export default function TuteurIA() {
           )}
         </div>
 
-        {messages.length <= 1 && (
+        {messages.length <= 1 && !blockedByQuota && (
           <div className="mt-4">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-violet-600" />
@@ -282,7 +321,7 @@ export default function TuteurIA() {
                 <button
                   key={s.text}
                   onClick={() => send(s.text)}
-                  disabled={isLoading || !configured}
+                  disabled={isLoading || !configured || blockedByQuota}
                   className="flex items-start gap-2 rounded-2xl border border-border bg-card p-3 text-left text-sm hover-elevate disabled:opacity-50"
                   data-testid={`suggestion-${s.text.slice(0, 10)}`}
                 >
@@ -338,39 +377,63 @@ export default function TuteurIA() {
             className="hidden"
             data-testid="input-file"
           />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || !configured}
-            className="rounded-full"
-            aria-label="Joindre une image"
-            data-testid="button-attach"
-            title="Joindre une photo d'exercice"
-          >
-            {attachedImage ? (
-              <ImageIcon className="h-4 w-4 text-violet-600" />
-            ) : (
-              <Paperclip className="h-4 w-4" />
-            )}
-          </Button>
+          {isPremium ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || !configured}
+              className="rounded-full"
+              aria-label="Joindre une image"
+              data-testid="button-attach"
+              title="Joindre une photo d'exercice"
+            >
+              {attachedImage ? (
+                <ImageIcon className="h-4 w-4 text-violet-600" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
+            </Button>
+          ) : (
+            <Link href="/dashboard/upgrade">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full text-amber-700"
+                aria-label="Photos réservées au Premium"
+                data-testid="button-attach-locked"
+                title="L'analyse de photos est réservée aux membres Premium"
+              >
+                <Lock className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              configured
-                ? attachedImage
-                  ? "Décrivez ce que vous voulez (optionnel)..."
-                  : "Posez votre question ou joignez une photo..."
-                : "IA indisponible"
+              !configured
+                ? "IA indisponible"
+                : blockedByQuota
+                  ? "Limite quotidienne atteinte — passez Premium"
+                  : attachedImage
+                    ? "Décrivez ce que vous voulez (optionnel)..."
+                    : isPremium
+                      ? "Posez votre question ou joignez une photo..."
+                      : "Posez votre question..."
             }
-            disabled={isLoading || !configured}
+            disabled={isLoading || !configured || blockedByQuota}
             className="rounded-full"
             data-testid="input-question"
           />
           <Button
             type="submit"
-            disabled={isLoading || !configured || (!input.trim() && !attachedImage)}
+            disabled={
+              isLoading ||
+              !configured ||
+              blockedByQuota ||
+              (!input.trim() && !attachedImage)
+            }
             className="rounded-full bg-hero-gradient text-white hover:opacity-90"
             data-testid="button-send"
           >
@@ -379,5 +442,49 @@ export default function TuteurIA() {
         </form>
       </div>
     </DashboardLayout>
+  );
+}
+
+function FreeTierBanner({ remaining, reached }: { remaining: number; reached: boolean }) {
+  return (
+    <div
+      className={`mb-4 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+        reached
+          ? "border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/20"
+          : "border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:border-amber-900/40 dark:from-amber-950/20 dark:to-orange-950/20"
+      }`}
+      data-testid="banner-free-tier"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${
+            reached
+              ? "bg-rose-500"
+              : "bg-gradient-to-br from-amber-400 to-orange-500"
+          }`}
+        >
+          {reached ? <Lock className="h-5 w-5" /> : <Crown className="h-5 w-5" />}
+        </div>
+        <div>
+          <p className="text-sm font-bold">
+            {reached
+              ? "Limite quotidienne atteinte"
+              : `Formule gratuite — ${remaining} ${remaining > 1 ? "questions restantes" : "question restante"} aujourd'hui`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Avec Premium : questions illimitées + analyse de photos d'exercices.
+          </p>
+        </div>
+      </div>
+      <Link href="/dashboard/upgrade">
+        <Button
+          className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90"
+          data-testid="button-upgrade-from-tutor"
+        >
+          <Sparkles className="mr-1.5 h-4 w-4" />
+          Devenir Premium
+        </Button>
+      </Link>
+    </div>
   );
 }

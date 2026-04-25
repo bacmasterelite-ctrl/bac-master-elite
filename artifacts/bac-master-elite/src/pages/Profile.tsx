@@ -17,7 +17,7 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
-import { useProfile } from "@/lib/queries";
+import { useProfile, usePremiumStatus } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const ALL_BADGES = [
@@ -34,11 +34,11 @@ const ALL_BADGES = [
 export default function Profile() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const { isPremium } = usePremiumStatus(user?.id);
 
   const fullName = profile?.full_name ?? (user?.user_metadata?.full_name as string | undefined) ?? "Élève";
   const email = profile?.email ?? user?.email ?? "";
   const serie = profile?.serie ?? (user?.user_metadata?.serie as string | undefined) ?? "D";
-  const isPremium = profile?.is_premium === true;
   const points = profile?.points ?? 0;
 
   const initials = fullName
@@ -77,18 +77,27 @@ export default function Profile() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 pb-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold",
-                    isPremium
-                      ? "border-amber-500/30 bg-amber-500/15 text-amber-700"
-                      : "border-border bg-muted/50 text-muted-foreground",
-                  )}
-                  data-testid="badge-status"
-                >
-                  <Crown className="h-3.5 w-3.5" />
-                  {isPremium ? "Premium" : "Gratuit"}
-                </span>
+                {isPremium ? (
+                  <motion.span
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 220, damping: 18 }}
+                    className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 px-3.5 py-1 text-xs font-bold text-amber-950 shadow-md shadow-amber-500/30"
+                    data-testid="badge-status"
+                  >
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+                    <Crown className="h-3.5 w-3.5 drop-shadow-sm" />
+                    <span className="relative">Premium</span>
+                  </motion.span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-bold text-muted-foreground"
+                    data-testid="badge-status"
+                  >
+                    <Crown className="h-3.5 w-3.5" />
+                    Gratuit
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-700">
                   <GraduationCap className="h-3.5 w-3.5" />
                   Série {serie}

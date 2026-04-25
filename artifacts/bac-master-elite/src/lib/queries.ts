@@ -127,6 +127,26 @@ export const useMySubscriptions = (userId?: string) =>
     enabled: !!userId,
   });
 
+/**
+ * Premium status — true if the user's profile is flagged premium OR they hold
+ * a validated 'premium' subscription. Source of truth is reactive across both.
+ */
+export const usePremiumStatus = (userId?: string) => {
+  const profileQ = useProfile(userId);
+  const subsQ = useMySubscriptions(userId);
+
+  const profilePremium = profileQ.data?.is_premium === true;
+  const validSub = (subsQ.data ?? []).some(
+    (s) => s.status === "valide" && /premium/i.test(s.plan ?? ""),
+  );
+  const isPremium = profilePremium || validSub;
+
+  return {
+    isPremium,
+    isLoading: profileQ.isLoading || subsQ.isLoading,
+  };
+};
+
 export const usePendingSubscriptions = () =>
   useQuery({
     queryKey: ["subscriptions", "pending"],
