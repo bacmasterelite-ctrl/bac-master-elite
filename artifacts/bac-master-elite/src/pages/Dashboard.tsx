@@ -172,7 +172,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/cours">
+              <Link href={`/dashboard/cours?subject=${encodeURIComponent(m)}`}>
                 <Button className="rounded-full bg-white text-blue-700 hover:bg-white/90" data-testid="button-continue-course">
                   Reprendre un cours
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -195,7 +195,7 @@ export default function Dashboard() {
             {allowedSubjects.map((m, i) => {
               const s = styleForSubject(m);
               return (
-                <Link key={m} href="/dashboard/cours">
+                <Link key={m} href={`/dashboard/cours?subject=${encodeURIComponent(m)}`}>
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}

@@ -137,6 +137,10 @@ export default function Cours() {
     return allowedSubjects.flatMap((m) => fallbackBySubject(m, serie));
   }, [lessons, serie, allowedSubjects]);
 
+  const params = new URLSearchParams(window.location.search);
+  const selectedSubject = params.get("subject");
+  const params = new URLSearchParams(window.location.search);
+  const selectedSubject = params.get("subject");
   const filtered = courses.filter((c) => {
     const matchesText =
       c.titre.toLowerCase().includes(q.toLowerCase()) ||
