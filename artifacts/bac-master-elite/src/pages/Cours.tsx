@@ -3,14 +3,14 @@ import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLessons } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
-import { Search, BookOpen, Clock, ChevronRight } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
 export default function Cours() {
   const { data: lessons = [], isLoading } = useLessons();
   const [query, setQuery] = useState("");
-  const [location] = useLocation();
+  const [, setLocation] = useLocation();
   
   const params = new URLSearchParams(window.location.search);
   const selectedSubject = params.get("subject");
@@ -25,7 +25,7 @@ export default function Cours() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-20">
+      <div className="space-y-6">
         <h1 className="text-2xl font-bold">{selectedSubject ? `Cours : ${selectedSubject}` : "Tous les cours"}</h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -33,11 +33,11 @@ export default function Cours() {
         </div>
         <div className="grid gap-4">
           {filtered.map((lesson) => (
-            <div key={lesson.id} className="p-5 border rounded-2xl bg-card shadow-sm">
-              <div className="text-xs font-bold uppercase text-blue-600 mb-2">{lesson.matiere}</div>
-              <h3 className="font-bold text-lg mb-4">{lesson.titre}</h3>
+            <div key={lesson.id} className="p-4 border rounded-xl bg-card">
+              <div className="text-xs font-bold text-primary uppercase mb-1">{lesson.matiere}</div>
+              <h3 className="font-bold mb-3">{lesson.titre}</h3>
               <Link href={`/dashboard/lecon/${lesson.id}`}>
-                <Button className="w-full justify-between rounded-xl">Commencer <ChevronRight className="h-4 w-4" /></Button>
+                <Button className="w-full justify-between">Étudier <ChevronRight className="h-4 w-4" /></Button>
               </Link>
             </div>
           ))}
