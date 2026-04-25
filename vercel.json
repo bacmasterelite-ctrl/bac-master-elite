@@ -1,8 +1,4 @@
 {
-  "buildCommand": "pnpm --filter @workspace/bac-master-elite build",
-  "outputDirectory": "artifacts/bac-master-elite/dist/public",
   "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "outputDirectory": "dist"
 }

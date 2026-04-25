@@ -30,7 +30,7 @@ export default function Cours() {
           <h1 className="text-2xl font-bold tracking-tight">
             {selectedSubject ? `Cours de ${selectedSubject}` : "Tous mes cours"}
           </h1>
-          <p className="text-muted-foreground">Révisez vos leçons et préparez votre examen.</p>
+          <p className="text-muted-foreground">Révisez vos leçons pour le BAC MASTER ELITE.</p>
         </div>
 
         <div className="relative">
@@ -52,7 +52,7 @@ export default function Cours() {
                 <div key={lesson.id} className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:shadow-md">
                   <div className="flex items-start justify-between">
                     <div className="space-y-3">
-                      <div className="inline-flex items-center rounded-full border bg-muted px-2.5 py-0.5 text-xs font-semibold transition-colors">
+                      <div className="inline-flex items-center rounded-full border bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase">
                         {lesson.matiere}
                       </div>
                       <h3 className="font-bold text-lg leading-none">{lesson.titre}</h3>
@@ -73,7 +73,7 @@ export default function Cours() {
               ))
             ) : (
               <div className="text-center py-10 text-muted-foreground">
-                Aucun cours trouvé pour cette sélection.
+                Aucun cours trouvé.
               </div>
             )}
           </div>
