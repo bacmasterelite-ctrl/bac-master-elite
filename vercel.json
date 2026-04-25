@@ -1,13 +1,6 @@
 {
-  "builds": [
-    {
-      "src": "artifacts/bac-master-elite/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    }
-  ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "artifacts/bac-master-elite/index.html" }
-  ]
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "rootDirectory": "artifacts/bac-master-elite",
+  "framework": "vite"
 }
