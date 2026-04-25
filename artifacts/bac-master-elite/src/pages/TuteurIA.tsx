@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Brain,
   Send,
@@ -34,6 +36,31 @@ const SUGGESTIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <div
+      className="prose prose-sm dark:prose-invert max-w-none
+        prose-headings:font-bold prose-headings:text-foreground
+        prose-h1:text-base prose-h2:text-base prose-h3:text-sm
+        prose-h2:mt-3 prose-h2:mb-1.5 prose-h3:mt-2 prose-h3:mb-1
+        prose-p:my-1.5 prose-p:leading-relaxed
+        prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5
+        prose-strong:text-foreground prose-strong:font-semibold
+        prose-code:rounded prose-code:bg-blue-500/10 prose-code:px-1
+        prose-code:py-0.5 prose-code:text-blue-700 prose-code:font-mono
+        prose-code:text-[0.85em] prose-code:before:content-none
+        prose-code:after:content-none
+        prose-pre:my-2 prose-pre:rounded-xl prose-pre:bg-slate-900
+        prose-pre:p-3 prose-pre:text-xs
+        prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+        prose-blockquote:border-l-blue-500 prose-blockquote:text-muted-foreground
+        prose-hr:my-3"
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    </div>
+  );
+}
+
 export default function TuteurIA() {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
@@ -43,7 +70,7 @@ export default function TuteurIA() {
     {
       id: uid(),
       role: "ai",
-      content: `Bonjour ! Je suis votre tuteur IA personnel pour la Série ${serie}. Posez-moi n'importe quelle question sur vos cours. ✨`,
+      content: `Bonjour ! Je suis votre **tuteur IA** personnel pour la **Série ${serie}**.\n\nPosez-moi n'importe quelle question sur vos cours et je vous répondrai de façon claire et structurée. ✨`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -141,16 +168,20 @@ export default function TuteurIA() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                     m.role === "user"
-                      ? "bg-blue-600 text-white"
+                      ? "whitespace-pre-wrap bg-blue-600 text-white"
                       : m.error
                         ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
                         : "bg-muted text-foreground"
                   }`}
                   data-testid={`message-${m.role}`}
                 >
-                  {m.content}
+                  {m.role === "ai" && !m.error ? (
+                    <MarkdownMessage content={m.content} />
+                  ) : (
+                    m.content
+                  )}
                 </div>
               </motion.div>
             ))}
