@@ -1,44 +1,79 @@
-import { useState, type FormEvent } from "react";
-import { motion } from "framer-motion";
-import { Brain, Send, Sparkles, BookOpen, Calculator, Beaker, Globe2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Brain,
+  Send,
+  Sparkles,
+  BookOpen,
+  Calculator,
+  Beaker,
+  Globe2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAIResponse, isGeminiConfigured } from "@/lib/gemini";
+import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { useProfile } from "@/lib/queries";
 
-type Message = { role: "user" | "ai"; content: string };
+type Message = {
+  role: "user" | "ai";
+  content: string;
+  error?: boolean;
+  id: string;
+};
 
-const suggestions = [
-  { icon: Calculator, text: "Explique-moi le théorème de Pythagore" },
+const SUGGESTIONS = [
+  { icon: Calculator, text: "Explique le théorème de Pythagore avec un exemple." },
   { icon: Beaker, text: "Comment équilibrer une équation chimique ?" },
   { icon: BookOpen, text: "Qu'est-ce que la conscience selon Descartes ?" },
-  { icon: Globe2, text: "Résume la décolonisation de l'Afrique" },
+  { icon: Globe2, text: "Résume la décolonisation de l'Afrique." },
 ];
 
+const uid = () => Math.random().toString(36).slice(2, 10);
+
 export default function TuteurIA() {
+  const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
+  const serie = profile?.serie ?? "D";
+
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: uid(),
       role: "ai",
-      content:
-        "Bonjour ! Je suis votre tuteur IA personnel. Posez-moi n'importe quelle question sur vos cours et je vous expliquerai avec des exemples adaptés à votre niveau. ✨",
+      content: `Bonjour ! Je suis votre tuteur IA personnel pour la Série ${serie}. Posez-moi n'importe quelle question sur vos cours. ✨`,
     },
   ]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const send = (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = { role: "user", content: text };
+  const configured = isGeminiConfigured();
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const send = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    const userMsg: Message = { id: uid(), role: "user", content: text };
     setMessages((m) => [...m, userMsg]);
     setInput("");
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "ai",
-          content:
-            "Excellente question ! Voici une explication claire pour vous aider à comprendre. (Connectez votre clé API pour activer les réponses IA en temps réel.)",
-        },
-      ]);
-    }, 600);
+    setIsLoading(true);
+
+    try {
+      const contextual = `Élève en Série ${serie}. Question : ${text}`;
+      const reply = await getAIResponse(contextual);
+      setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue.";
+      setMessages((m) => [...m, { id: uid(), role: "ai", content: message, error: true }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -53,73 +88,126 @@ export default function TuteurIA() {
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-violet-600">IA</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Tuteur IA</h1>
+            <p className="text-xs text-muted-foreground">
+              Propulsé par Google Gemini · Personnalisé pour la Série {serie}
+            </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-            En ligne
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+              configured
+                ? "bg-emerald-500/15 text-emerald-700"
+                : "bg-rose-500/15 text-rose-700"
+            }`}
+            data-testid="ai-status"
+          >
+            <span
+              className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                configured ? "bg-emerald-500" : "bg-rose-500"
+              }`}
+            />
+            {configured ? "En ligne" : "Hors ligne"}
           </span>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-sm">
-          {messages.map((m, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${m.role === "user" ? "justify-end" : ""}`}
-            >
-              {m.role === "ai" && (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-hero-gradient text-white">
-                  <Brain className="h-4 w-4" />
-                </div>
-              )}
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
-                  m.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-muted text-foreground"
-                }`}
+        {!configured && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Clé API Gemini manquante. Ajoutez la variable <code className="rounded bg-rose-100 px-1 dark:bg-rose-900/40">VITE_GEMINI_API_KEY</code> dans les secrets.
+            </p>
+          </div>
+        )}
+
+        <div
+          ref={scrollRef}
+          className="flex-1 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-sm"
+          data-testid="chat-window"
+        >
+          <AnimatePresence initial={false}>
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-3 ${m.role === "user" ? "justify-end" : ""}`}
               >
-                {m.content}
+                {m.role === "ai" && (
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ${
+                      m.error ? "bg-rose-500" : "bg-hero-gradient"
+                    }`}
+                  >
+                    {m.error ? <AlertCircle className="h-4 w-4" /> : <Brain className="h-4 w-4" />}
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : m.error
+                        ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
+                        : "bg-muted text-foreground"
+                  }`}
+                  data-testid={`message-${m.role}`}
+                >
+                  {m.content}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-hero-gradient text-white">
+                <Brain className="h-4 w-4" />
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Le tuteur réfléchit...
               </div>
             </motion.div>
-          ))}
-
-          {messages.length === 1 && (
-            <div className="pt-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Quelques idées pour commencer
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => send(s.text)}
-                    className="flex items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left text-sm hover-elevate"
-                    data-testid={`suggestion-${i}`}
-                  >
-                    <s.icon className="h-4 w-4 shrink-0 text-blue-600" />
-                    <span>{s.text}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
         </div>
 
-        <form onSubmit={onSubmit} className="mt-4 flex gap-2">
-          <div className="relative flex-1">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500" />
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Posez votre question..."
-              className="pl-9"
-              data-testid="input-ai-question"
-            />
+        {messages.length <= 1 && (
+          <div className="mt-4">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+              Suggestions
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s.text}
+                  onClick={() => send(s.text)}
+                  disabled={isLoading || !configured}
+                  className="flex items-start gap-2 rounded-2xl border border-border bg-card p-3 text-left text-sm hover-elevate disabled:opacity-50"
+                  data-testid={`suggestion-${s.text.slice(0, 10)}`}
+                >
+                  <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                  <span>{s.text}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <Button type="submit" className="bg-hero-gradient text-white hover:opacity-90" data-testid="button-send">
-            <Send className="h-4 w-4" />
+        )}
+
+        <form onSubmit={onSubmit} className="mt-4 flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={configured ? "Posez votre question..." : "IA indisponible"}
+            disabled={isLoading || !configured}
+            className="rounded-full"
+            data-testid="input-question"
+          />
+          <Button
+            type="submit"
+            disabled={isLoading || !configured || !input.trim()}
+            className="rounded-full bg-hero-gradient text-white hover:opacity-90"
+            data-testid="button-send"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
       </div>
