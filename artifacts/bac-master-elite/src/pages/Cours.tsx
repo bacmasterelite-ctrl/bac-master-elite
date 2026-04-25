@@ -33,11 +33,11 @@ export default function Cours() {
         </div>
         <div className="grid gap-4">
           {filtered.map((lesson) => (
-            <div key={lesson.id} className="p-5 border rounded-2xl bg-card">
-              <div className="text-xs font-bold uppercase text-primary mb-2">{lesson.matiere}</div>
+            <div key={lesson.id} className="p-5 border rounded-2xl bg-card shadow-sm">
+              <div className="text-xs font-bold uppercase text-blue-600 mb-2">{lesson.matiere}</div>
               <h3 className="font-bold text-lg mb-4">{lesson.titre}</h3>
               <Link href={`/dashboard/lecon/${lesson.id}`}>
-                <Button className="w-full justify-between">Commencer <ChevronRight className="h-4 w-4" /></Button>
+                <Button className="w-full justify-between rounded-xl">Commencer <ChevronRight className="h-4 w-4" /></Button>
               </Link>
             </div>
           ))}
