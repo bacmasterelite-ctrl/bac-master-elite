@@ -41,8 +41,13 @@ export type ImageInput = {
 let cachedClient: GoogleGenerativeAI | null = null;
 function getClient() {
   if (!apiKey) {
+    console.error(
+      "[Tuteur IA] VITE_GEMINI_API_KEY est ABSENTE du bundle. " +
+        "Sur Vercel : Settings → Environment Variables → ajoutez VITE_GEMINI_API_KEY " +
+        "puis REDÉPLOYEZ (les variables Vite sont injectées au build, pas au runtime).",
+    );
     throw new Error(
-      "Clé API Gemini manquante. Ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement.",
+      "Clé API Gemini manquante. Ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement, puis redéployez.",
     );
   }
   if (!cachedClient) cachedClient = new GoogleGenerativeAI(apiKey);
@@ -81,12 +86,18 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
     } catch (err) {
       lastError = err;
       const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[Tuteur IA] Échec du modèle "${modelName}" :`,
+        { message, hasImage: !!image, promptLen: prompt.length, raw: err },
+      );
       if (!/not.?found|404|unavailable|deprecated|model/i.test(message)) {
         throw new Error(humanizeError(message));
       }
+      console.warn(`[Tuteur IA] Bascule vers le modèle suivant…`);
     }
   }
 
+  console.error("[Tuteur IA] Tous les modèles Gemini ont échoué.", lastError);
   throw new Error(humanizeError(lastError instanceof Error ? lastError.message : "Erreur inconnue"));
 }
 
