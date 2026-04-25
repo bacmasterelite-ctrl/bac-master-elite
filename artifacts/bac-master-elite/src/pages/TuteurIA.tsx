@@ -26,6 +26,7 @@ import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile, usePremiumStatus } from "@/lib/queries";
 import { useDailyAILimit, FREE_AI_DAILY_LIMIT } from "@/lib/premium";
+import { useToast } from "@/hooks/use-toast";
 
 type Message = {
   role: "user" | "ai";
@@ -78,6 +79,7 @@ export default function TuteurIA() {
   const { isPremium } = usePremiumStatus(user?.id);
   const serie = profile?.serie ?? "D";
   const limit = useDailyAILimit(user?.id);
+  const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -179,6 +181,11 @@ export default function TuteurIA() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";
       setMessages((m) => [...m, { id: uid(), role: "ai", content: message, error: true }]);
+      toast({
+        title: "Tuteur IA indisponible",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -481,8 +488,10 @@ function FreeTierBanner({ remaining, reached }: { remaining: number; reached: bo
           className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90"
           data-testid="button-upgrade-from-tutor"
         >
-          <Sparkles className="mr-1.5 h-4 w-4" />
-          Devenir Premium
+          <Crown className="mr-1.5 h-4 w-4" />
+          {reached
+            ? "Passer Premium pour continuer à discuter"
+            : "Devenir Premium"}
         </Button>
       </Link>
     </div>
