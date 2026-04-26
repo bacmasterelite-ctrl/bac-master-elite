@@ -12,6 +12,7 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Cours from "@/pages/Cours";
+import Lecon from "@/pages/Lecon";
 import Exercices from "@/pages/Exercices";
 import Annales from "@/pages/Annales";
 import TuteurIA from "@/pages/TuteurIA";
@@ -82,6 +83,11 @@ function AppRoutes() {
       <Route path="/dashboard/cours">
         <ProtectedRoute>
           <Cours />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/lecon/:id">
+        <ProtectedRoute>
+          <Lecon />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/exercices">
