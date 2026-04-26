@@ -25,3 +25,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Artifacts
+
+- **`artifacts/bac-master-elite`** (web, served at `/`) — French BAC exam prep app ported from Vercel/v0. Uses Vite + React, wouter for routing, Tanstack Query, Tailwind v4, Supabase (auth + database), and Google Gemini (AI tutor). Required secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GEMINI_API_KEY`.
+- **`artifacts/api-server`** (api, served at `/api`) — shared Express backend scaffold (currently unused by the BAC app, which uses Supabase directly).
+- **`artifacts/mockup-sandbox`** (design) — design/mockup canvas scaffold.
+
+## Migration notes
+
+The original Vercel project was already a Vite + React app (not Next.js), so no framework conversion was needed — files were copied into the new artifact, additional runtime deps installed, and Supabase/Gemini secrets requested. The original tree is preserved in `.migration-backup/` (excluded via `.replitignore`).
