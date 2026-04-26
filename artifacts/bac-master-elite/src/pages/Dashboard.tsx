@@ -172,7 +172,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href={`/dashboard/cours?subject=${encodeURIComponent(m)}`}>
+              <Link href="/dashboard/cours">
                 <Button className="rounded-full bg-white text-blue-700 hover:bg-white/90" data-testid="button-continue-course">
                   Reprendre un cours
                   <ArrowRight className="ml-2 h-4 w-4" />
