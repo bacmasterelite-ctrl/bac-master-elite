@@ -1,34 +1,55 @@
 import { useSearch } from "wouter";
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { useLessons } from "@/lib/queries";
+import { useLessons, useProfile } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
 import { Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { subjectsForSerie } from "@/lib/subjects";
 
 export default function Cours() {
+  const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const { data: lessons = [], isLoading } = useLessons();
   const [query, setQuery] = useState("");
   const search = useSearch();
   const params = new URLSearchParams(search);
   const selectedSubject = params.get("subject");
 
+  const serie = (profile?.serie ?? "D").toUpperCase();
+  const allowedSubjects = subjectsForSerie(serie);
+
   const filtered = useMemo(() => {
     return lessons.filter((l) => {
       const titre = (l.titre ?? l.title ?? "").toLowerCase();
       const matiere = (l.matiere ?? l.subject ?? "").toLowerCase();
-      const matchesText = titre.includes(query.toLowerCase());
+      const lessonSerie = (l.serie ?? "").toUpperCase();
+
+      // Filtre par série : la leçon doit correspondre à la série de l'user
+      const matchesSerie = !lessonSerie || lessonSerie.includes(serie);
+
+      // Filtre par matière autorisée pour cette série
+      const matchesAllowed = allowedSubjects.some(
+        (s) => s.toLowerCase() === matiere || matiere.includes(s.toLowerCase())
+      );
+
+      // Filtre par matière sélectionnée depuis le dashboard
       const matchesSubject = !selectedSubject || matiere === selectedSubject.toLowerCase();
-      return matchesText && matchesSubject;
+
+      // Filtre par recherche texte
+      const matchesText = titre.includes(query.toLowerCase());
+
+      return matchesSerie && matchesAllowed && matchesSubject && matchesText;
     });
-  }, [lessons, query, selectedSubject]);
+  }, [lessons, query, selectedSubject, serie, allowedSubjects]);
 
   return (
     <DashboardLayout>
       <div className="space-y-6 pb-10">
         <h1 className="text-2xl font-bold">
-          {selectedSubject ? `Cours de ${selectedSubject}` : "Tous les cours"}
+          {selectedSubject ? `Cours de ${selectedSubject}` : `Tous les cours — Série ${serie}`}
         </h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
