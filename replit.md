@@ -48,3 +48,14 @@ The app is built and previewed in Replit, then deployed to Vercel. Configuration
   - `VITE_GEMINI_API_KEY`
   These must be re-saved on Vercel because `VITE_*` variables are baked into the bundle at build time — they are NOT read from Replit secrets at runtime.
 - After the first Vercel deploy, copy the production URL into the Supabase project (**Authentication → URL Configuration → Site URL & Redirect URLs**) so auth callbacks work from the production domain.
+
+## GeniusPay payments (automated)
+
+Manual payment-proof uploads are gone. Stack:
+
+- **DB schema**: run `payments_setup.sql` once in Supabase SQL Editor. Adds `profiles.{plan, plan_expires_at, free_bot_questions_today, last_activity_date}`, the `payments` table (UUID, `provider_ref UNIQUE` for idempotence), the `is_premium(uid)` SQL helper, RLS on `courses/lessons/exercises/annales` (free or premium-active users only), and the `increment_ai_question(uid)` RPC enforcing 3 questions/day for free users with auto-reset at day change.
+- **Vercel Edge function** `api/create-payment.ts`: validates the user JWT via Supabase, looks up server-side prices (mensuel = 1499 XOF, annuel = 10499 XOF), calls `${GENIUSPAY_API_URL}/payments` with metadata `{ user_id, plan, expected_amount }`, and returns `checkout_url` for client-side redirect. Success URL is hard-coded to `https://bac-master-elite-bac-master-elite-2vcw5nv63.vercel.app/success`.
+- **Supabase Edge function** `supabase/functions/geniuspay-webhook/index.ts`: verifies HMAC-SHA256 signature on the raw body (`x-geniuspay-signature`), validates currency=XOF and amount matches the plan price + the `expected_amount` metadata, is idempotent on `provider_ref`, and bumps `profiles.plan_expires_at` cumulatively (+30 / +365 days from `max(now, current expiry)`).
+- **Required env vars on Vercel** (server-side, not `VITE_*`): `GENIUSPAY_SECRET_KEY`, `GENIUSPAY_API_URL` (optional, defaults to `https://api.geniuspay.io/v1`), `GENIUSPAY_WEBHOOK_URL` (the deployed Supabase function URL), `PUBLIC_APP_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`.
+- **Required secrets on Supabase Functions**: `GENIUSPAY_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` (`SUPABASE_URL` is provided automatically).
+- Deploy the webhook with `supabase functions deploy geniuspay-webhook --no-verify-jwt` and configure the resulting URL in the GeniusPay dashboard as the webhook target.

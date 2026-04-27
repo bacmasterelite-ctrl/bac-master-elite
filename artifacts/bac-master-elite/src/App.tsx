@@ -23,6 +23,7 @@ import Upgrade from "@/pages/Upgrade";
 import Profile from "@/pages/Profile";
 import Leaderboard from "@/pages/Leaderboard";
 import Admin from "@/pages/Admin";
+import Success from "@/pages/Success";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -140,6 +141,10 @@ function AppRoutes() {
         <ProtectedRoute>
           <Admin />
         </ProtectedRoute>
+      </Route>
+
+      <Route path="/success">
+        <Success />
       </Route>
 
       <Route component={NotFound} />

@@ -10,6 +10,10 @@ export type Profile = {
   is_admin?: boolean;
   points?: number;
   avatar_url?: string | null;
+  plan?: "mensuel" | "annuel" | null;
+  plan_expires_at?: string | null;
+  free_bot_questions_today?: number | null;
+  last_activity_date?: string | null;
 };
 
 export type Course = Record<string, unknown> & {
@@ -38,17 +42,17 @@ export type Annal = Record<string, unknown> & {
   subject?: string;
 };
 
-export type Subscription = {
+export type Payment = {
   id: string;
+  provider: string;
+  provider_ref: string;
   user_id: string;
-  plan: string;
+  plan: "mensuel" | "annuel";
   amount: number;
   currency: string;
-  payment_method?: string | null;
-  proof_url?: string | null;
-  status: "en_attente" | "valide" | "rejete";
+  status: "initie" | "succes" | "echec" | "rembourse";
   created_at: string;
-  validated_at?: string | null;
+  paid_at?: string | null;
 };
 
 const safeFetch = async <T,>(table: string): Promise<T[]> => {
@@ -108,130 +112,104 @@ export const useLeaderboard = () =>
     },
   });
 
-export const useMySubscriptions = (userId?: string) =>
+export const useMyPayments = (userId?: string) =>
   useQuery({
-    queryKey: ["subscriptions", "me", userId],
+    queryKey: ["payments", "me", userId],
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
-        .from("subscriptions")
+        .from("payments")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) {
-        console.warn("[supabase] subscriptions:", error.message);
+        console.warn("[supabase] payments:", error.message);
         return [];
       }
-      return (data ?? []) as Subscription[];
+      return (data ?? []) as Payment[];
     },
     enabled: !!userId,
   });
 
 /**
- * Premium status — true if the user's profile is flagged premium OR they hold
- * a validated 'premium' subscription. Source of truth is reactive across both.
+ * Premium status — true si plan_expires_at > now() OU is_premium=true.
+ * Source de vérité : la table profiles, mise à jour automatiquement par
+ * l'Edge Function geniuspay-webhook après chaque paiement réussi.
  */
 export const usePremiumStatus = (userId?: string) => {
   const profileQ = useProfile(userId);
-  const subsQ = useMySubscriptions(userId);
+  const profile = profileQ.data;
 
-  const profilePremium = profileQ.data?.is_premium === true;
-  const validSub = (subsQ.data ?? []).some(
-    (s) => s.status === "valide" && /premium/i.test(s.plan ?? ""),
-  );
-  const isPremium = profilePremium || validSub;
+  const flagged = profile?.is_premium === true;
+  const expiresAt = profile?.plan_expires_at
+    ? new Date(profile.plan_expires_at).getTime()
+    : 0;
+  const stillActive = expiresAt > Date.now();
+  const isPremium = flagged || stillActive;
 
   return {
     isPremium,
-    isLoading: profileQ.isLoading || subsQ.isLoading,
+    isLoading: profileQ.isLoading,
+    expiresAt: profile?.plan_expires_at ?? null,
+    plan: profile?.plan ?? null,
   };
 };
 
-export const usePendingSubscriptions = () =>
-  useQuery({
-    queryKey: ["subscriptions", "pending"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("*, profile:profiles(id, full_name, email, serie, is_premium)")
-        .eq("status", "en_attente")
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.warn("[supabase] pending subscriptions:", error.message);
-        return [];
-      }
-      return (data ?? []) as (Subscription & { profile?: Profile })[];
-    },
-  });
-
-export type SubmitProofInput = {
-  userId: string;
-  file: File;
-  paymentMethod: "wave" | "mtn" | "orange";
-  amount: number;
-  plan: string;
-};
-
-export const useSubmitPaymentProof = () => {
-  const qc = useQueryClient();
+/**
+ * Démarre un checkout GeniusPay et redirige immédiatement l'utilisateur
+ * vers l'URL de paiement renvoyée par /api/create-payment.
+ */
+export const useStartCheckout = () => {
   return useMutation({
-    mutationFn: async (input: SubmitProofInput) => {
-      const ext = input.file.name.split(".").pop() ?? "png";
-      const path = `${input.userId}/${Date.now()}.${ext}`;
+    mutationFn: async (plan: "mensuel" | "annuel") => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Vous devez être connecté pour payer.");
 
-      const { error: uploadError } = await supabase.storage
-        .from("proofs")
-        .upload(path, input.file, { cacheControl: "3600", upsert: false });
-      if (uploadError) throw new Error(uploadError.message);
-
-      const { error: insertError } = await supabase.from("subscriptions").insert({
-        user_id: input.userId,
-        plan: input.plan,
-        amount: input.amount,
-        payment_method: input.paymentMethod,
-        proof_url: path,
-        status: "en_attente",
+      const res = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan }),
       });
-      if (insertError) throw new Error(insertError.message);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["subscriptions"] });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (body as { error?: string }).error ?? "Paiement indisponible.",
+        );
+      }
+      const url = (body as { checkout_url?: string }).checkout_url;
+      if (!url) throw new Error("URL de paiement manquante.");
+      window.location.href = url;
+      return url;
     },
   });
 };
 
-export const useValidateSubscription = () => {
+/**
+ * Quota IA : 3 questions/jour pour les comptes gratuits.
+ * Backed by la fonction RPC `increment_ai_question` qui auto-reset chaque jour.
+ */
+export const useIncrementAIQuestion = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { subscriptionId: string; userId: string; approve: boolean }) => {
-      const newStatus = input.approve ? "valide" : "rejete";
-      const { error: subError } = await supabase
-        .from("subscriptions")
-        .update({ status: newStatus, validated_at: new Date().toISOString() })
-        .eq("id", input.subscriptionId);
-      if (subError) throw new Error(subError.message);
-
-      if (input.approve) {
-        const { error: profError } = await supabase
-          .from("profiles")
-          .update({ is_premium: true })
-          .eq("id", input.userId);
-        if (profError) throw new Error(profError.message);
-      }
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.rpc("increment_ai_question", {
+        uid: userId,
+      });
+      if (error) throw new Error(error.message);
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as {
+        free_bot_questions_today: number;
+        last_activity_date: string;
+        allowed: boolean;
+      };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["subscriptions"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 };
-
-// Get a signed URL for a file in the 'proofs' bucket
-export async function getProofSignedUrl(path: string, expiresIn = 3600): Promise<string | null> {
-  const { data, error } = await supabase.storage.from("proofs").createSignedUrl(path, expiresIn);
-  if (error) {
-    console.warn("[supabase] signed url:", error.message);
-    return null;
-  }
-  return data.signedUrl;
-}
