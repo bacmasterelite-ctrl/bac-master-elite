@@ -120,7 +120,7 @@ export default async function handler(req: Request): Promise<Response> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${secret}`,
+        "X-API-Key": secret,
       },
       body: JSON.stringify(body),
     });
