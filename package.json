@@ -11,6 +11,8 @@
   },
   "private": true,
   "devDependencies": {
+    "@types/node": "^22.19.17",
+    "@vercel/node": "^5.7.13",
     "prettier": "^3.8.1",
     "supabase": "^2.95.3",
     "typescript": "~5.9.2"
