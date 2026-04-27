@@ -120,7 +120,7 @@ export default async function handler(req: Request): Promise<Response> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Basic ${Buffer.from(secret + ":").toString("base64")}`,
+        authorization: `Bearer ${secret}`,
       },
       body: JSON.stringify(body),
     });
