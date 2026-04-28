@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -8,7 +8,7 @@ import { ArrowLeft, Crown, Download, Loader2, Lock } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
-import { useLessons, usePremiumStatus, type Course } from "@/lib/queries";
+import { useLessons, usePremiumStatus, useCheckCourseAccess, type Course } from "@/lib/queries";
 import { useToast } from "@/hooks/use-toast";
 
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
@@ -26,11 +26,26 @@ export default function Lecon() {
   const { isPremium, isLoading: premiumLoading } = usePremiumStatus(user?.id);
   const { data: lessons = [], isLoading } = useLessons();
   const { toast } = useToast();
+  const checkCourseAccess = useCheckCourseAccess();
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const lesson = useMemo<Course | undefined>(
     () => lessons.find((l) => String(l.id) === String(lessonId)),
     [lessons, lessonId],
   );
+
+  useEffect(() => {
+    if (!premiumLoading && user?.id) {
+      checkCourseAccess.mutate(user.id, {
+        onSuccess: (result) => {
+          if (!result.allowed) {
+            setAccessDenied(true);
+            toast({ title: "Limite atteinte", description: result.reason, variant: "destructive" });
+          }
+        }
+      });
+    }
+  }, [user?.id, premiumLoading]);
 
   if (isLoading) {
     return (
@@ -148,6 +163,21 @@ export default function Lecon() {
       });
     }
   };
+
+  if (accessDenied) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+          <Crown className="h-12 w-12 text-orange-500" />
+          <h2 className="text-xl font-bold">Limite journalière atteinte</h2>
+          <p className="text-muted-foreground">Tu as consulté 3 leçons aujourd'hui. Passe à premium pour un accès illimité !</p>
+          <Link href="/dashboard/upgrade">
+            <Button className="bg-orange-500 hover:bg-orange-600">Passer à Premium</Button>
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

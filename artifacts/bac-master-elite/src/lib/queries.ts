@@ -213,3 +213,29 @@ export const useIncrementAIQuestion = () => {
     },
   });
 };
+
+/**
+ * Vérifier + incrémenter l'accès aux cours.
+ * 3 cours/jour pour les non-premium, illimité pour premium.
+ * Backed by la fonction RPC `check_and_increment_course`.
+ */
+export const useCheckCourseAccess = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.rpc("check_and_increment_course", {
+        uid: userId,
+      });
+      if (error) throw new Error(error.message);
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as {
+        allowed: boolean;
+        remaining: number | null;
+        reason?: string;
+      };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+};
