@@ -7,7 +7,7 @@
  *
  * Variables d'environnement requises (à configurer sur Vercel) :
  *   - GENIUSPAY_SECRET_KEY     (clé API GeniusPay côté serveur)
- *   - GENIUSPAY_API_URL        (optionnel, défaut https://sandbox.pay.genius.ci/api/v1)
+ *   - GENIUSPAY_API_URL        (optionnel, défaut https://pay.genius.ci/api/v1)
  *   - GENIUSPAY_WEBHOOK_URL    (URL publique de l'Edge Function webhook)
  *   - PUBLIC_APP_URL           (URL publique du front, pour success/cancel)
  *   - SUPABASE_URL             (URL projet Supabase)
@@ -90,7 +90,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
   const apiUrl =
     process.env.GENIUSPAY_API_URL?.replace(/\/$/, "") ??
-    "https://sandbox.pay.genius.ci/api/v1";
+    "https://pay.genius.ci/api/v1";
   const webhookUrl = process.env.GENIUSPAY_WEBHOOK_URL ?? "";
 
   const body = {
