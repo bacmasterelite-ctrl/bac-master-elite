@@ -102,16 +102,8 @@ export default async function handler(req: Request): Promise<Response> {
       (process.env.PUBLIC_APP_URL ?? SUCCESS_URL.replace("/success", "")) +
       "/dashboard/upgrade",
     webhook_url: webhookUrl || undefined,
-    customer: {
-      id: user.id,
-      email: user.email ?? undefined,
-      name: (user.user_metadata?.full_name as string | undefined) ?? undefined,
-    },
+    ,
     metadata: {
-      user_id: user.id,
-      plan,
-      expected_amount: amount,
-    },
   };
 
   let providerRes: Response;
