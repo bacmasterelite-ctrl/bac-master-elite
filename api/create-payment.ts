@@ -116,11 +116,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   let providerRes: Response;
   try {
-    providerRes = await fetch(`${apiUrl}/payments`, {
+    providerRes = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "X-API-Key": secret,
+        "Authorization": `Bearer ${secret}`,
       },
       body: JSON.stringify(body),
     });
