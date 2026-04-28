@@ -83,8 +83,10 @@ const publicKey = process.env.GENIUSPAY_PUBLIC_KEY;
   try { providerJson = text ? JSON.parse(text) : {}; } catch {}
 
   if (!providerRes.ok) {
+    console.error("GENIUSPAY_ERROR", JSON.stringify({ status: providerRes.status, body: providerJson || text }));
     return json(providerRes.status, { error: "GeniusPay a refusé la transaction.", detail: providerJson || text });
   }
+  console.log("GENIUSPAY_SUCCESS", JSON.stringify(providerJson));
 
   const checkoutUrl =
     (providerJson as any)?.data?.checkout_url ??
