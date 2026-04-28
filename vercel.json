@@ -3,7 +3,7 @@
   "buildCommand": "BASE_PATH=/ PORT=3000 pnpm --filter @workspace/bac-master-elite run build",
   "outputDirectory": "artifacts/bac-master-elite/dist/public",
   "installCommand": "pnpm install --frozen-lockfile",
-  "framework": null,
+  "framework": null, "functions": {"api/*.ts": {"runtime": "edge"}},
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
