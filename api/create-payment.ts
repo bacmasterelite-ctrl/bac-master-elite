@@ -88,7 +88,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!secret) {
     return json(500, { error: "GENIUSPAY_SECRET_KEY non configurée." });
   }
-  const apiUrl =
+  const apiUrl = "https://pay.genius.ci/api/v1/checkout";
     process.env.GENIUSPAY_API_URL?.replace(/\/$/, "") ??
     "https://pay.genius.ci/api/v1";
   const webhookUrl = process.env.GENIUSPAY_WEBHOOK_URL ?? "";
