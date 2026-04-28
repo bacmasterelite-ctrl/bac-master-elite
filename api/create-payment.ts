@@ -44,7 +44,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (authErr || !user) return json(401, { error: "Session invalide." });
 
 const publicKey = process.env.GENIUSPAY_PUBLIC_KEY;
-  if (!secret) return json(500, { error: "GENIUSPAY_SECRET_KEY manquante." });
+
 
   const appUrl = process.env.PUBLIC_APP_URL ?? "https://bac-master-elite-bac-master-elite.vercel.app";
   const webhookUrl = process.env.GENIUSPAY_WEBHOOK_URL ?? "";
