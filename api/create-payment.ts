@@ -43,7 +43,7 @@ export default async function handler(req: Request): Promise<Response> {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return json(401, { error: "Session invalide." });
 
-  const secret = process.env.GENIUSPAY_SECRET_KEY;
+const publicKey = process.env.GENIUSPAY_PUBLIC_KEY;
   if (!secret) return json(500, { error: "GENIUSPAY_SECRET_KEY manquante." });
 
   const appUrl = process.env.PUBLIC_APP_URL ?? "https://bac-master-elite-bac-master-elite.vercel.app";
@@ -54,7 +54,7 @@ export default async function handler(req: Request): Promise<Response> {
     currency: "XOF",
     description: `BAC MASTER ELITE — Abonnement Premium ${plan}`,
     success_url: `${appUrl}/success`,
-    cancel_url: `${appUrl}/dashboard/upgrade`,
+    error_url: `${appUrl}/dashboard/upgrade`,
     webhook_url: webhookUrl || undefined,
     metadata: {
       user_id: user.id,
@@ -65,11 +65,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   let providerRes: Response;
   try {
-    providerRes = await fetch("https://pay.genius.ci/api/v1/checkout", {
+    providerRes = await fetch("https://pay.genius.ci/api/v1/merchant/payments", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "Authorization": `Bearer ${secret}`,
+        "X-API-Key": process.env.GENIUSPAY_PUBLIC_KEY!,
+        "X-API-Secret": process.env.GENIUSPAY_SECRET_KEY!,
       },
       body: JSON.stringify(body),
     });
@@ -86,9 +87,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const checkoutUrl =
-    (providerJson.payment_url as string) ??
-    (providerJson.checkout_url as string) ??
-    (providerJson.url as string);
+    (providerJson as any)?.data?.checkout_url ??
+    (providerJson as any)?.data?.payment_url;
 
   if (!checkoutUrl) return json(502, { error: "URL de paiement manquante.", detail: providerJson });
 
