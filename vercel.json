@@ -1,5 +1,8 @@
 {
   "buildCommand": "cd artifacts/bac-master-elite && pnpm run build",
   "outputDirectory": "artifacts/bac-master-elite/dist/public",
-  "installCommand": "cd artifacts/bac-master-elite && pnpm install"
+  "installCommand": "cd artifacts/bac-master-elite && pnpm install",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
