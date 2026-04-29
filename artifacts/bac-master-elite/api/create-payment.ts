@@ -1,0 +1,71 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from "@supabase/supabase-js";
+
+type Plan = "mensuel" | "annuel";
+const PLAN_PRICES: Record<Plan, number> = { mensuel: 1499, annuel: 10499 };
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const { plan } = req.body as { plan?: Plan };
+  if (plan !== "mensuel" && plan !== "annuel")
+    return res.status(400).json({ error: "plan invalide." });
+
+  const geniusPublicKey = process.env["GENUISPAY_PUBLIC_KEY"];
+  const geniusSecretKey = process.env["GENUISPAY_SECRET_KEY"];
+  if (!geniusPublicKey || !geniusSecretKey)
+    return res.status(500).json({ error: "Config GeniusPay manquante côté serveur." });
+
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Vous devez être connecté pour payer." });
+
+  const supabase = createClient(
+    process.env["SUPABASE_URL"]!,
+    process.env["SUPABASE_ANON_KEY"]!,
+    { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  if (authErr || !user) return res.status(401).json({ error: "Session invalide." });
+
+  const appUrl = process.env["PUBLIC_APP_URL"] ?? "https://bac-master-elite-bac-master-elite-rk21ws258.vercel.app";
+  const webhookUrl = process.env["GENUISPAY_WEBHOOK_URL"] ?? "";
+  const amount = PLAN_PRICES[plan];
+
+  const body = {
+    amount,
+    currency: "XOF",
+    description: `BAC MASTER ELITE — Abonnement Premium ${plan}`,
+    success_url: `${appUrl}/success`,
+    error_url: `${appUrl}/dashboard/upgrade`,
+    webhook_url: webhookUrl || undefined,
+    metadata: { user_id: user.id, plan, expected_amount: amount },
+  };
+
+  try {
+    const providerRes = await fetch(process.env["GENUISPAY_URL"]!, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${geniusSecretKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const text = await providerRes.text();
+    let providerJson: Record<string, unknown> = {};
+    try { providerJson = text ? JSON.parse(text) : {}; } catch {}
+
+    if (!providerRes.ok)
+      return res.status(providerRes.status).json({ error: "GeniusPay a refusé la transaction.", detail: providerJson || text });
+
+    const checkoutUrl =
+      (providerJson as any)?.data?.checkout_url ?? (providerJson as any)?.data?.payment_url;
+    if (!checkoutUrl)
+      return res.status(502).json({ error: "URL de paiement manquante.", detail: providerJson });
+
+    return res.status(200).json({ checkout_url: checkoutUrl, plan, amount });
+  } catch (err) {
+    return res.status(502).json({ error: "GeniusPay injoignable.", detail: err instanceof Error ? err.message : String(err) });
+  }
+}
