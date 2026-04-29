@@ -31,8 +31,9 @@ export default function Cours() {
       const matchesSerie = !lessonSerie || lessonSerie.includes(serie);
 
       // Filtre par matière autorisée pour cette série
-      const matchesAllowed = allowedSubjects.some(
-        (s) => s.toLowerCase() === matiere || matiere.includes(s.toLowerCase())
+      const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const matchesAllowed = allowedSubjects.some(
+        (s) => normalize(s) === normalize(matiere) || normalize(matiere).includes(normalize(s))
       );
 
       // Filtre par matière sélectionnée depuis le dashboard
