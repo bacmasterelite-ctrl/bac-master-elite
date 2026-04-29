@@ -11,6 +11,19 @@ import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useLessons, usePremiumStatus, useCheckCourseAccess, type Course } from "@/lib/queries";
 import { useToast } from "@/hooks/use-toast";
 
+function formatToMarkdown(text: string): string {
+  if (text.includes("##") || text.includes("**")) return text;
+  return text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+      if (line === line.toUpperCase() && line.length > 3 && !line.includes(".")) return `## ${line}`;
+      return line;
+    })
+    .join("\n\n");
+}
+
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) {
     const v = record[k];
@@ -227,7 +240,7 @@ export default function Lecon() {
           <div className="mt-6 border-t border-border pt-6">
             {content ? (
               <article className="prose prose-sm max-w-none dark:prose-invert sm:prose-base">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatToMarkdown(content)}</ReactMarkdown>
               </article>
             ) : (
               <p className="text-sm text-muted-foreground">
