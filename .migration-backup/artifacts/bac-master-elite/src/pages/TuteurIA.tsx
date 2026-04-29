@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from "@/lib/gemini";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
-import { useProfile, usePremiumStatus } from "@/lib/queries";
+import { useProfile, usePremiumStatus, useIncrementAIQuestion } from "@/lib/queries";
 import { useDailyAILimit, FREE_AI_DAILY_LIMIT } from "@/lib/premium";
 import { useToast } from "@/hooks/use-toast";
 
@@ -79,6 +79,7 @@ export default function TuteurIA() {
   const { isPremium } = usePremiumStatus(user?.id);
   const serie = profile?.serie ?? "D";
   const limit = useDailyAILimit(user?.id);
+  const { mutateAsync: incrementAI } = useIncrementAIQuestion();
   const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -158,6 +159,22 @@ export default function TuteurIA() {
     if (blockedByQuota) return;
     if (image && !isPremium) return;
 
+    if (!isPremium && user?.id) {
+      try {
+        const res = await incrementAI(user.id);
+        if (!res.allowed) {
+          toast({
+            title: "Limite quotidienne atteinte",
+            description: `Vous avez utilisé vos ${FREE_AI_DAILY_LIMIT} questions gratuites du jour. Passez Premium pour continuer.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn("[ai quota]", err);
+      }
+    }
+
     const promptForUser = trimmed || (image ? "Aide-moi avec cet exercice." : "");
     const userMsg: Message = {
       id: uid(),
@@ -177,7 +194,6 @@ export default function TuteurIA() {
       }Question : ${promptForUser}`;
       const reply = await getAIResponse(contextual, image);
       setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
-      if (!isPremium) limit.increment();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";
       setMessages((m) => [...m, { id: uid(), role: "ai", content: message, error: true }]);

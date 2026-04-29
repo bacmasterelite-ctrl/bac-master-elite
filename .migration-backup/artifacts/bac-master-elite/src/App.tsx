@@ -12,7 +12,9 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Cours from "@/pages/Cours";
+import Lecon from "@/pages/Lecon";
 import Exercices from "@/pages/Exercices";
+import Exercice from "@/pages/Exercice";
 import Annales from "@/pages/Annales";
 import TuteurIA from "@/pages/TuteurIA";
 import Methodologie from "@/pages/Methodologie";
@@ -21,6 +23,7 @@ import Upgrade from "@/pages/Upgrade";
 import Profile from "@/pages/Profile";
 import Leaderboard from "@/pages/Leaderboard";
 import Admin from "@/pages/Admin";
+import Success from "@/pages/Success";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -84,9 +87,19 @@ function AppRoutes() {
           <Cours />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/lecon/:id">
+        <ProtectedRoute>
+          <Lecon />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/exercices">
         <ProtectedRoute>
           <Exercices />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/exercice/:id">
+        <ProtectedRoute>
+          <Exercice />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/annales">
@@ -128,6 +141,10 @@ function AppRoutes() {
         <ProtectedRoute>
           <Admin />
         </ProtectedRoute>
+      </Route>
+
+      <Route path="/success">
+        <Success />
       </Route>
 
       <Route component={NotFound} />

@@ -1,43 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useProfile, usePremiumStatus } from "./queries";
 
 /** Free tier limits */
 export const FREE_AI_DAILY_LIMIT = 3;
 
-const todayKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-const storageKey = (userId: string | undefined) =>
-  `bme:tuteur-ia:${userId ?? "anon"}:${todayKey()}`;
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /**
- * Track daily AI message count for a user (free-tier limit enforcement).
- * Stored in localStorage keyed per user + per day, so it auto-resets at midnight.
+ * Daily AI quota for free users — backed by Supabase columns
+ * `profiles.free_bot_questions_today` and `profiles.last_activity_date`.
+ *
+ * Returns the same shape as before:
+ *   { count, remaining, reached, increment }
+ *
+ * `increment` is provided by the caller (via useIncrementAIQuestion mutation),
+ * so this hook only computes display state from the live profile.
  */
 export function useDailyAILimit(userId: string | undefined) {
-  const [count, setCount] = useState(0);
+  const { data: profile } = useProfile(userId);
+  const { isPremium } = usePremiumStatus(userId);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey(userId));
-      setCount(raw ? Number(raw) || 0 : 0);
-    } catch {
-      setCount(0);
+  return useMemo(() => {
+    if (isPremium) {
+      return {
+        count: 0,
+        remaining: Infinity,
+        reached: false,
+        unlimited: true as const,
+      };
     }
-  }, [userId]);
-
-  const increment = useCallback(() => {
-    setCount((prev) => {
-      const next = prev + 1;
-      try {
-        localStorage.setItem(storageKey(userId), String(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, [userId]);
-
-  const remaining = Math.max(0, FREE_AI_DAILY_LIMIT - count);
-  const reached = count >= FREE_AI_DAILY_LIMIT;
-
-  return { count, remaining, reached, increment };
+    const today = todayISO();
+    const sameDay = profile?.last_activity_date === today;
+    const count = sameDay ? profile?.free_bot_questions_today ?? 0 : 0;
+    const remaining = Math.max(0, FREE_AI_DAILY_LIMIT - count);
+    const reached = count >= FREE_AI_DAILY_LIMIT;
+    return { count, remaining, reached, unlimited: false as const };
+  }, [profile?.free_bot_questions_today, profile?.last_activity_date, isPremium]);
 }
