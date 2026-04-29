@@ -73,14 +73,14 @@ export default function Lecon() {
       if (!trimmedBlock) return;
 
       if (trimmedBlock.startsWith("|")) {
-        const rows = trimmedBlock.split("\n")
+        const rows: string[][] = trimmedBlock.split("\n")
           .filter(r => r.includes("|") && !r.includes("---"))
           .map(r => r.split("|").filter(c => c.trim()).map(c => clean(c)));
 
         if (rows.length > 0) {
-          const head = [rows.shift()];
+          const headRow = rows.shift() ?? [];
           autoTable(doc, {
-            head: head,
+            head: [headRow],
             body: rows,
             startY: currentY,
             theme: 'grid', // Force l'affichage des lignes et colonnes
@@ -102,7 +102,9 @@ export default function Lecon() {
             },
             margin: { left: margin, right: margin }
           });
-          currentY = (doc as any).lastAutoTable.finalY + 30;
+          const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } })
+            .lastAutoTable?.finalY ?? currentY;
+          currentY = finalY + 30;
         }
       } else {
         doc.setFont("helvetica", "normal").setFontSize(12);

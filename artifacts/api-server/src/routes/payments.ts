@@ -19,6 +19,14 @@ router.post("/create-payment", async (req: Request, res: Response) => {
 
   const amount = PLAN_PRICES[plan];
 
+  const geniusPublicKey = process.env["GENIUSPAY_PUBLIC_KEY"];
+  const geniusSecretKey = process.env["GENIUSPAY_SECRET_KEY"];
+  if (!geniusPublicKey || !geniusSecretKey) {
+    return res
+      .status(500)
+      .json({ error: "Config GeniusPay manquante côté serveur." });
+  }
+
   const authHeader = req.headers.authorization ?? "";
   const token = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
@@ -75,8 +83,8 @@ router.post("/create-payment", async (req: Request, res: Response) => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "X-API-Key": process.env["GENIUSPAY_PUBLIC_KEY"] ?? "",
-          "X-API-Secret": process.env["GENIUSPAY_SECRET_KEY"] ?? "",
+          "X-API-Key": geniusPublicKey,
+          "X-API-Secret": geniusSecretKey,
         },
         body: JSON.stringify(body),
       },
