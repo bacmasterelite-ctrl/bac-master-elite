@@ -28,6 +28,7 @@ import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import {
   useExercises,
   useLessons,
@@ -360,6 +361,11 @@ export default function Dashboard() {
               ))}
             </div>
           </motion.div>
+        </div>
+
+        {/* Témoignages communauté */}
+        <div className="mt-10 rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
+          <TestimonialsCarousel variant="dashboard" showForm={true} />
         </div>
       </div>
     </DashboardLayout>

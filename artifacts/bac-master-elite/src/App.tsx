@@ -25,6 +25,9 @@ import Leaderboard from "@/pages/Leaderboard";
 import Admin from "@/pages/Admin";
 import Success from "@/pages/Success";
 import NotFound from "@/pages/not-found";
+import Quiz from "@/pages/Quiz";
+import Parrainage from "@/pages/Parrainage";
+import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +140,16 @@ function AppRoutes() {
           <Leaderboard />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/quiz">
+        <ProtectedRoute>
+          <Quiz />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/parrainage">
+        <ProtectedRoute>
+          <Parrainage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/admin">
         <ProtectedRoute>
           <Admin />
@@ -158,6 +171,7 @@ function App() {
       <SupabaseAuthProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <RefTracker />
             <AppRoutes />
           </WouterRouter>
           <Toaster />

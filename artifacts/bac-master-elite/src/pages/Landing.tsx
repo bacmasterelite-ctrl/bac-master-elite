@@ -17,6 +17,8 @@ import {
   Globe2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TestimonialsCarousel from "@/components/TestimonialsCarousel";
+import TeachersSection from "@/components/TeachersSection";
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -327,8 +329,22 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Témoignages dynamiques */}
+      <section id="temoignages-dynamiques" className="border-t border-border bg-muted/30 px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <TestimonialsCarousel variant="landing" showForm={false} />
+        </div>
+      </section>
+
+      {/* Recommandations professeurs */}
+      <section id="professeurs" className="px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <TeachersSection />
+        </div>
+      </section>
+
       {/* CTA */}
-      <section id="temoignages" className="px-4 pb-24 sm:px-6 lg:px-8">
+      <section id="cta-final" className="px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-hero-gradient p-10 text-center shadow-2xl sm:p-16">
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Prêt à transformer votre préparation au BAC ?
