@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Target,
   ListChecks,
@@ -6,11 +9,28 @@ import {
   Compass,
   ArrowRight,
   CheckCircle2,
+  BookOpen,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { methodologyExamples, type MethodologyExample } from "@/lib/methodologyExamples";
 
-const methods = [
+const methods: Array<{
+  exampleKey: keyof typeof methodologyExamples;
+  icon: typeof Target;
+  titre: string;
+  color: string;
+  iconBg: string;
+  steps: string[];
+}> = [
   {
+    exampleKey: "dissertation",
     icon: Target,
     titre: "Méthode de la dissertation",
     color: "border-l-blue-600",
@@ -23,6 +43,7 @@ const methods = [
     ],
   },
   {
+    exampleKey: "maths",
     icon: ListChecks,
     titre: "Résolution d'un problème de Maths",
     color: "border-l-violet-600",
@@ -35,6 +56,7 @@ const methods = [
     ],
   },
   {
+    exampleKey: "commentaire",
     icon: Lightbulb,
     titre: "Commentaire de texte",
     color: "border-l-rose-500",
@@ -47,6 +69,7 @@ const methods = [
     ],
   },
   {
+    exampleKey: "histoire",
     icon: Compass,
     titre: "Étude de document (Histoire-Géo)",
     color: "border-l-indigo-500",
@@ -61,6 +84,8 @@ const methods = [
 ];
 
 export default function Methodologie() {
+  const [activeExample, setActiveExample] = useState<MethodologyExample | null>(null);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -101,7 +126,12 @@ export default function Methodologie() {
                       </li>
                     ))}
                   </ol>
-                  <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
+                  <button
+                    type="button"
+                    onClick={() => setActiveExample(methodologyExamples[m.exampleKey])}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                    data-testid={`button-method-example-${m.exampleKey}`}
+                  >
                     Voir un exemple
                     <ArrowRight className="h-3 w-3" />
                   </button>
@@ -111,6 +141,32 @@ export default function Methodologie() {
           ))}
         </div>
       </div>
+
+      <Dialog open={!!activeExample} onOpenChange={(open) => !open && setActiveExample(null)}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden p-0">
+          {activeExample && (
+            <>
+              <DialogHeader className="border-b border-border bg-muted/40 px-6 py-4">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Exemple — {activeExample.type}
+                </div>
+                <DialogTitle className="text-xl">Sujet traité</DialogTitle>
+                <DialogDescription className="italic text-foreground/80">
+                  {activeExample.sujet}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] overflow-y-auto px-6 py-5">
+                <article className="prose prose-sm max-w-none dark:prose-invert sm:prose-base">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {activeExample.exemple}
+                  </ReactMarkdown>
+                </article>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

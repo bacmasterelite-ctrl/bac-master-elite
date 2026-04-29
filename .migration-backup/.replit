@@ -19,71 +19,33 @@ expertMode = true
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
 
-[userenv]
-
-[userenv.shared]
-VITE_SUPABASE_URL = "https://eaqpefpmrksnoubfhwwg.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhcXBlZnBtcmtzbm91YmZod3dnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3ODU0NjEsImV4cCI6MjA5MjM2MTQ2MX0.uguxNvkyzA9d52OCQFdyXDfKYcaNc078G9P2PN2Kdns"
-
 [[ports]]
-localPort = 5173
-externalPort = 6000
-
-[[ports]]
-localPort = 5174
-externalPort = 6800
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
-
-[[ports]]
-localPort = 8082
-externalPort = 3000
-
-[[ports]]
-localPort = 8083
-externalPort = 3001
-
-[[ports]]
-localPort = 8084
-externalPort = 3002
-
-[[ports]]
-localPort = 8085
-externalPort = 3003
-
-[[ports]]
-localPort = 8086
-externalPort = 4200
-
-[[ports]]
-localPort = 8087
-externalPort = 5000
-
-[[ports]]
-localPort = 8088
-externalPort = 5173
-
-[[ports]]
-localPort = 24102
+localPort = 8094
 externalPort = 80
 
 [[ports]]
-localPort = 24103
-externalPort = 8008
+localPort = 8095
+externalPort = 3000
 
 [[ports]]
-localPort = 24104
+localPort = 8096
+externalPort = 3001
+
+[[ports]]
+localPort = 8097
+externalPort = 3002
+
+[[ports]]
+localPort = 8098
+externalPort = 3003
+
+[[ports]]
+localPort = 8099
 externalPort = 8099
 
 [[ports]]
-localPort = 24105
-externalPort = 8000
+localPort = 8100
+externalPort = 4200
 
 [nix]
 channel = "stable-25_05"

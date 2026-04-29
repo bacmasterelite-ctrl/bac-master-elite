@@ -43,11 +43,11 @@ function getClient() {
   if (!apiKey) {
     console.error(
       "[Tuteur IA] VITE_GEMINI_API_KEY est ABSENTE du bundle. " +
-        "Sur Vercel : Settings → Environment Variables → ajoutez VITE_GEMINI_API_KEY " +
-        "puis REDÉPLOYEZ (les variables Vite sont injectées au build, pas au runtime).",
+        "Ajoutez VITE_GEMINI_API_KEY dans les Secrets de votre projet, " +
+        "puis relancez l'application (les variables Vite sont injectées au build, pas au runtime).",
     );
     throw new Error(
-      "Clé API Gemini manquante. Ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement, puis redéployez.",
+      "Clé API Gemini manquante. Ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement, puis relancez l'application.",
     );
   }
   if (!cachedClient) cachedClient = new GoogleGenerativeAI(apiKey);
