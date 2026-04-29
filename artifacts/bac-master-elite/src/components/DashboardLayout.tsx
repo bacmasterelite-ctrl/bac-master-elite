@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Compass,
   Lightbulb,
+  Users as UsersIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
@@ -32,7 +33,9 @@ const navItems = [
   { href: "/dashboard/methodologie", label: "Méthodologie", icon: Compass },
   { href: "/dashboard/astuces", label: "Astuces BAC", icon: Lightbulb },
   { href: "/dashboard/tuteur-ia", label: "Tuteur IA", icon: Brain, badge: "IA" },
+  { href: "/dashboard/quiz", label: "Quiz", icon: Sparkles, badge: "+pts" },
   { href: "/dashboard/leaderboard", label: "Classement", icon: Trophy },
+  { href: "/dashboard/parrainage", label: "Parrainage", icon: UsersIcon },
   { href: "/dashboard/profile", label: "Profil", icon: UserIcon },
 ];
 
