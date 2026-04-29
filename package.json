@@ -21,6 +21,8 @@
     "@supabase/supabase-js": "^2.104.1",
     "clsx": "catalog:",
     "framer-motion": "catalog:",
+    "html2pdf.js": "^0.14.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "catalog:",
     "next": "^16.2.4",
     "react": "catalog:",
