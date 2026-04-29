@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd artifacts/bac-master-elite && npm run build",
+  "outputDirectory": "artifacts/bac-master-elite/dist",
+  "installCommand": "cd artifacts/bac-master-elite && npm install"
+}
