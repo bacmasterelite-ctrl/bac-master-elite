@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
   Copy,
   Share2,
   Sparkles,
-  MousePointerClick,
   Trophy,
   CheckCircle2,
-  Loader2,
   Gift,
+  UserPlus,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -17,35 +16,26 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile } from "@/lib/queries";
-import { useMyInvitation, useEnsureInvitation } from "@/lib/extensions";
+import { useMyReferrals } from "@/lib/extensions";
 
-const POINTS_PER_CLICK = 10;
+const POINTS_PER_REFERRAL = 10;
 
 export default function Parrainage() {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
-  const { data: invitation, isLoading } = useMyInvitation(user?.id);
-  const ensureInvitation = useEnsureInvitation();
+  const { data: referrals = [] } = useMyReferrals(user?.id);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!user || isLoading) return;
-    if (!invitation) {
-      ensureInvitation.mutate(user.id);
-    }
-  }, [user, invitation, isLoading, ensureInvitation]);
-
-  const code = invitation?.invitation_code ?? "";
-  const clicks = invitation?.clicks ?? 0;
-  const earned = clicks * POINTS_PER_CLICK;
+  const referralsCount = referrals.length;
+  const earned = referralsCount * POINTS_PER_REFERRAL;
 
   const inviteUrl = useMemo(() => {
-    if (!code || typeof window === "undefined") return "";
+    if (!user?.id || typeof window === "undefined") return "";
     const origin = window.location.origin;
     const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-    return `${origin}${base}/?ref=${code}`;
-  }, [code]);
+    return `${origin}${base}/?ref=${user.id}`;
+  }, [user?.id]);
 
   const copyLink = async () => {
     if (!inviteUrl) return;
@@ -91,8 +81,8 @@ export default function Parrainage() {
             Invitez vos amis, gagnez des points
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            +{POINTS_PER_CLICK} points ajoutés à votre profil pour chaque clic
-            sur votre lien d'invitation.
+            +{POINTS_PER_REFERRAL} points ajoutés à votre profil pour chaque ami
+            qui crée un compte via votre lien.
           </p>
         </div>
 
@@ -103,11 +93,13 @@ export default function Parrainage() {
             className="rounded-2xl border border-border bg-card p-5 shadow-sm"
           >
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <MousePointerClick className="h-3.5 w-3.5" />
-              Clics
+              <UserPlus className="h-3.5 w-3.5" />
+              Filleuls inscrits
             </div>
-            <p className="mt-2 text-3xl font-extrabold text-blue-600">{clicks}</p>
-            <p className="text-xs text-muted-foreground">amis ont cliqué</p>
+            <p className="mt-2 text-3xl font-extrabold text-blue-600" data-testid="stat-referrals-count">
+              {referralsCount}
+            </p>
+            <p className="text-xs text-muted-foreground">comptes créés via vous</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -119,7 +111,7 @@ export default function Parrainage() {
               <Sparkles className="h-3.5 w-3.5" />
               Points gagnés
             </div>
-            <p className="mt-2 text-3xl font-extrabold text-emerald-600">
+            <p className="mt-2 text-3xl font-extrabold text-emerald-600" data-testid="stat-points-earned">
               +{earned}
             </p>
             <p className="text-xs text-muted-foreground">via le parrainage</p>
@@ -154,50 +146,62 @@ export default function Parrainage() {
             </div>
           </div>
 
-          {!user || isLoading || !invitation ? (
-            <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Préparation de votre code…
-            </div>
-          ) : (
-            <>
-              <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row">
-                <Input
-                  readOnly
-                  value={inviteUrl}
-                  className="flex-1 font-mono text-xs"
-                  data-testid="input-invite-link"
-                />
-                <Button
-                  onClick={copyLink}
-                  variant="outline"
-                  className="rounded-full"
-                  data-testid="button-copy-link"
-                >
-                  {copied ? (
-                    <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <Copy className="mr-2 h-4 w-4" />
-                  )}
-                  {copied ? "Copié" : "Copier"}
-                </Button>
-                <Button
-                  onClick={shareNative}
-                  className="rounded-full bg-hero-gradient text-white hover:opacity-90"
-                  data-testid="button-share-link"
-                >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Partager
-                </Button>
-              </div>
-
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-mono">
-                <span className="text-muted-foreground">Code :</span>
-                <span className="font-bold tracking-wider">{code}</span>
-              </div>
-            </>
-          )}
+          <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row">
+            <Input
+              readOnly
+              value={inviteUrl}
+              className="flex-1 font-mono text-xs"
+              data-testid="input-invite-link"
+            />
+            <Button
+              onClick={copyLink}
+              variant="outline"
+              className="rounded-full"
+              data-testid="button-copy-link"
+            >
+              {copied ? (
+                <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              {copied ? "Copié" : "Copier"}
+            </Button>
+            <Button
+              onClick={shareNative}
+              className="rounded-full bg-hero-gradient text-white hover:opacity-90"
+              data-testid="button-share-link"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Partager
+            </Button>
+          </div>
         </div>
+
+        {referrals.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <p className="text-sm font-semibold">Vos filleuls</p>
+            <ul className="mt-3 divide-y divide-border">
+              {referrals.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between py-2.5 text-sm"
+                >
+                  <span className="font-medium">
+                    {r.full_name ?? "Élève"}{" "}
+                    {r.serie && (
+                      <span className="text-xs text-muted-foreground">
+                        — Série {r.serie}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <p className="text-sm font-semibold">Comment ça marche</p>
@@ -209,13 +213,13 @@ export default function Parrainage() {
                 desc: "WhatsApp, TikTok, Instagram, SMS — tout fonctionne.",
               },
               {
-                icon: MousePointerClick,
-                title: "Vos amis cliquent",
-                desc: "Chaque clic est compté automatiquement.",
+                icon: UserPlus,
+                title: "Vos amis créent un compte",
+                desc: "En cliquant sur votre lien, leur inscription est associée à vous.",
               },
               {
                 icon: Sparkles,
-                title: `+${POINTS_PER_CLICK} points par clic`,
+                title: `+${POINTS_PER_REFERRAL} points par filleul`,
                 desc: "Vos points sont ajoutés instantanément à votre profil.",
               },
               {

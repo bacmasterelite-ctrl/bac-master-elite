@@ -126,6 +126,34 @@ export const useMyQuizResults = (userId?: string) =>
     enabled: !!userId,
   });
 
+/**
+ * Returns the list of profiles that have referrer_id = userId.
+ * Used by the Parrainage page to display "X amis ont rejoint via vous".
+ */
+export const useMyReferrals = (userId?: string) =>
+  useQuery({
+    queryKey: ["my-referrals", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, serie, created_at")
+        .eq("referrer_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.warn("[my-referrals] fetch:", error.message);
+        return [];
+      }
+      return (data ?? []) as Array<{
+        id: string;
+        full_name: string | null;
+        serie: string | null;
+        created_at: string;
+      }>;
+    },
+    enabled: !!userId,
+  });
+
 export const useMyInvitation = (userId?: string) =>
   useQuery({
     queryKey: ["my-invitation", userId],

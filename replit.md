@@ -42,6 +42,16 @@ Tables Supabase attendues : `invitations`, `reviews`, `quiz_results`, `daily_usa
 ### Setup Supabase requis (à appliquer dans SQL Editor)
 1. `.local/sql/rls_policies.sql` — politiques RLS reviews + invitations
 2. `.local/sql/additional_setup.sql` — contrainte unique reviews + RPC `register_referral_click`
+3. `.local/sql/referral_v2.sql` — colonne `profiles.referrer_id` + RPC `register_referral_signup` (parrainage v2 : `?ref=user_id`)
+
+### Reset password
+- Bouton "Mot de passe oublié ?" sur `/login` ouvre un dialogue → `supabase.auth.resetPasswordForEmail(email, { redirectTo: <origin>/reset-password })`
+- Page `/reset-password` (publique, hors PublicOnlyRoute) → `supabase.auth.updateUser({ password })` quand session recovery présente
+
+### Parrainage v2
+- Lien : `?ref=<user.id UUID>` (plus de table `invitations`)
+- `RefTracker` capture le ref dans localStorage (TTL 30 jours), `SupabaseAuthProvider.ensureProfile` appelle le RPC `register_referral_signup` après l'upsert du profil → +10 points au parrain (idempotent, anti auto-parrainage)
+- Stats sur `/dashboard/parrainage` = `count(profiles WHERE referrer_id = me)` × 10
 
 ### GeniusPay
 - `api/create-payment.ts` — Vercel serverless (utilise env `GENIUSPAY_*`, fallback sur ancienne orthographe `GENUISPAY_*`)
