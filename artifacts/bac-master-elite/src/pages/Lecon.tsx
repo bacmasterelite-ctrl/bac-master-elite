@@ -1,20 +1,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { motion } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { ArrowLeft, Crown, Download, Loader2, Lock } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PremiumLimitModal from "@/components/PremiumLimitModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useLessons, usePremiumStatus, useCheckCourseAccess, type Course } from "@/lib/queries";
-
-function formatToMarkdown(text: string): string {
-  if (text.includes("##") || text.includes("**")) return text;
-  return text.split("\n").map(line => line.trim()).filter(line => line.length > 0).join("\n\n");
-}
 
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) {
@@ -32,114 +24,169 @@ export default function Lecon() {
   const { data: lessons = [], isLoading } = useLessons();
   const checkCourseAccess = useCheckCourseAccess();
   const [accessDenied, setAccessDenied] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
 
   const lesson = useMemo<Course | undefined>(
     () => lessons.find((l) => String(l.id) === String(lessonId)),
     [lessons, lessonId],
   );
 
+  // Tâche 3 : vérifier + incrémenter le compteur de leçons du jour
   useEffect(() => {
-    if (!premiumLoading && user?.id) {
-      checkCourseAccess.mutate(user.id, {
-        onSuccess: (result) => {
-          if (!result.allowed) setAccessDenied(true);
+    if (premiumLoading || !user?.id || isPremium) return;
+    checkCourseAccess.mutate(user.id, {
+      onSuccess: (result) => {
+        if (!result.allowed) {
+          setAccessDenied(true);
+          setLimitModalOpen(true);
         }
-      });
-    }
-  }, [user?.id, premiumLoading]);
+      },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, premiumLoading, isPremium]);
 
   const lessonRecord = (lesson as Record<string, unknown>) || {};
   const title = pickString(lessonRecord, "titre", "title") || "Leçon";
-  const subject = pickString(lessonRecord, "matiere", "subject") || "Matière";
+  const subject = pickString(lessonRecord, "matiere", "subject") || "";
   const content = pickString(lessonRecord, "contenu", "content", "markdown", "text") || "";
+  const pdfUrl = pickString(lessonRecord, "pdf_url") || "";
 
-  const handleDownloadPdf = () => {
-    if (!isPremium) return;
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const clean = (t: string) => t.replace(/[#*]/g, "").trim();
+  // Tâche 2 : URL de retour vers la liste des leçons de la matière
+  const backUrl = subject
+    ? `/dashboard/cours?subject=${encodeURIComponent(subject.toLowerCase())}`
+    : "/dashboard/cours";
 
-    const margin = 40;
-    let currentY = 50;
-
-    doc.setFont("helvetica", "bold").setFontSize(22).text(clean(title), margin, currentY);
-    currentY += 15;
-    doc.setDrawColor(30, 64, 175).setLineWidth(1.5).line(margin, currentY, 555, currentY);
-    currentY += 30;
-
-    const blocks = content.trim().split(/\n(?=\|)/g);
-
-    blocks.forEach((block) => {
-      const trimmedBlock = block.trim();
-      if (!trimmedBlock) return;
-
-      if (trimmedBlock.startsWith("|")) {
-        const rows: string[][] = trimmedBlock.split("\n")
-          .filter(r => r.includes("|") && !r.includes("---"))
-          .map(r => r.split("|").filter(c => c.trim()).map(c => clean(c)));
-
-        if (rows.length > 0) {
-          const headRow = rows.shift() ?? [];
-          autoTable(doc, {
-            head: [headRow],
-            body: rows,
-            startY: currentY,
-            theme: 'grid', // Force l'affichage des lignes et colonnes
-            styles: { 
-              fontSize: 10, 
-              font: "helvetica", 
-              cellPadding: 8, 
-              lineColor: [180, 180, 180], // Couleur des lignes (gris)
-              lineWidth: 0.5 
-            },
-            headStyles: { 
-              fillColor: [30, 64, 175], // Entête bleue
-              textColor: [255, 255, 255], 
-              fontStyle: 'bold',
-              halign: 'center'
-            },
-            alternateRowStyles: { 
-              fillColor: [245, 247, 250] // Lignes alternées pour la lecture
-            },
-            margin: { left: margin, right: margin }
-          });
-          const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } })
-            .lastAutoTable?.finalY ?? currentY;
-          currentY = finalY + 30;
-        }
-      } else {
-        doc.setFont("helvetica", "normal").setFontSize(12);
-        const lines = doc.splitTextToSize(clean(trimmedBlock), 515);
-        lines.forEach((line: string) => {
-          if (currentY > 780) { doc.addPage(); currentY = 50; }
-          doc.text(line, margin, currentY);
-          currentY += 16;
-        });
-        currentY += 12;
-      }
-    });
-
-    doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+  // Tâche 1 : impression via window.print()
+  const handlePrint = () => {
+    window.print();
   };
 
-  if (isLoading) return <DashboardLayout><div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div></DashboardLayout>;
-  if (!lesson) return <DashboardLayout><div className="text-center py-20">Leçon introuvable</div></DashboardLayout>;
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-20">Leçon introuvable</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-3xl space-y-6 pb-12">
-        <div className="flex items-center justify-between">
-          <Link href="/dashboard/cours"><Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" /> Retour</Button></Link>
-          {isPremium && <Button onClick={handleDownloadPdf} className="bg-blue-600 text-white"><Download className="mr-2 h-4 w-4" /> Télécharger PDF</Button>}
-        </div>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-3xl border bg-card p-8 shadow-sm">
-          <p className="text-xs font-bold uppercase text-blue-600 tracking-wider">{subject}</p>
-          <h1 className="text-3xl font-bold mt-2">{title}</h1>
-          <div className="mt-8 border-t pt-8">
-            <article className="prose prose-blue max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatToMarkdown(content)}</ReactMarkdown>
-            </article>
+      {/* Modal limite non-premium */}
+      <PremiumLimitModal
+        open={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        type="lessons"
+      />
+
+      <div className="mx-auto max-w-3xl space-y-6 pb-12 print:max-w-none print:space-y-4">
+        {/* Barre d'actions — masquée à l'impression */}
+        <div className="flex items-center justify-between print:hidden">
+          <Link href={backUrl}>
+            <Button variant="ghost" size="sm" data-testid="button-back">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour{subject ? ` — ${subject}` : ""}
+            </Button>
+          </Link>
+          <div className="flex items-center gap-2">
+            {isPremium && (
+              <Button
+                onClick={handlePrint}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                data-testid="button-print"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Télécharger PDF
+              </Button>
+            )}
+            {!isPremium && (
+              <Link href="/dashboard/upgrade">
+                <Button variant="outline" size="sm">
+                  <Crown className="mr-2 h-4 w-4 text-amber-500" />
+                  PDF Premium
+                </Button>
+              </Link>
+            )}
           </div>
-        </motion.div>
+        </div>
+
+        {/* Contenu verrouillé si limite atteinte */}
+        {accessDenied ? (
+          <div className="rounded-3xl border bg-card p-12 text-center shadow-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/30">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="mt-4 text-xl font-bold">Limite quotidienne atteinte</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Vous avez consulté 3 leçons aujourd'hui. Revenez demain ou passez Premium pour un accès illimité.
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <Link href="/dashboard/upgrade">
+                <Button className="bg-hero-gradient text-white hover:opacity-90">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Passer Premium
+                </Button>
+              </Link>
+              <Link href={backUrl}>
+                <Button variant="ghost">Retour aux leçons</Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-3xl border bg-card shadow-sm print:border-none print:shadow-none print:rounded-none"
+          >
+            {/* En-tête de la leçon */}
+            <div className="p-8 pb-4 print:p-0 print:pb-4">
+              <p className="text-xs font-bold uppercase text-blue-600 tracking-wider print:text-black">
+                {subject || "Cours"}
+              </p>
+              <h1 className="text-3xl font-bold mt-2 print:text-2xl">{title}</h1>
+              {pdfUrl && isPremium && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline print:hidden"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Fichier PDF original
+                </a>
+              )}
+            </div>
+
+            {/* Contenu de la leçon — HTML + SVG */}
+            <div className="border-t p-8 pt-6 print:p-0 print:pt-4 print:border-none">
+              <article
+                id="lesson-content"
+                className="
+                  prose prose-blue max-w-none
+                  dark:prose-invert
+                  prose-headings:font-bold
+                  prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
+                  prose-table:w-full
+                  prose-th:bg-blue-600 prose-th:text-white prose-th:px-3 prose-th:py-2
+                  prose-td:px-3 prose-td:py-2
+                  [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-w-full
+                  [&_img]:w-full [&_img]:h-auto
+                "
+                data-testid="lesson-content"
+                dangerouslySetInnerHTML={{ __html: content }}
+              />
+            </div>
+          </motion.div>
+        )}
       </div>
     </DashboardLayout>
   );
