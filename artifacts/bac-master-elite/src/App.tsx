@@ -24,6 +24,7 @@ import Profile from "@/pages/Profile";
 import Leaderboard from "@/pages/Leaderboard";
 import Admin from "@/pages/Admin";
 import Success from "@/pages/Success";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import Quiz from "@/pages/Quiz";
 import Parrainage from "@/pages/Parrainage";
@@ -158,6 +159,10 @@ function AppRoutes() {
 
       <Route path="/success">
         <Success />
+      </Route>
+
+      <Route path="/reset-password">
+        <ResetPassword />
       </Route>
 
       <Route component={NotFound} />

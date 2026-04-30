@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { readStoredReferrer, clearStoredReferrer } from "@/components/RefTracker";
 
 type AuthContextValue = {
   user: User | null;
@@ -42,6 +43,21 @@ async function ensureProfile(user: User) {
   );
   if (error) {
     console.warn("[profile upsert]", error.message);
+  }
+
+  // Apply referral if we have a pending one in localStorage.
+  // Idempotent + anti self-referral handled inside the SQL function.
+  const referrerId = readStoredReferrer();
+  if (referrerId && referrerId !== user.id) {
+    const { error: refErr } = await supabase.rpc("register_referral_signup", {
+      p_user: user.id,
+      p_referrer: referrerId,
+    });
+    if (refErr) {
+      console.warn("[register_referral_signup]", refErr.message);
+    } else {
+      clearStoredReferrer();
+    }
   }
 }
 
