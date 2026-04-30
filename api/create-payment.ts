@@ -80,8 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Bearer ${geniusSecretKey}`,
-        "X-Public-Key": geniusPublicKey,
+        "X-API-Secret": geniusSecretKey,
+        "X-API-Key": geniusPublicKey,
       },
       body: JSON.stringify(payload),
     });
