@@ -93,7 +93,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
       if (!/not.?found|404|unavailable|deprecated|model/i.test(message)) {
         throw new Error(humanizeError(message));
       }
-      console.warn(`[Tuteur IA] Bascule vers le modèle suivant…`);
+      if (/quota|rate|429/i.test(message)) { await new Promise(r => setTimeout(r, 3000)); } console.warn(`[Tuteur IA] Bascule vers le modèle suivant…`);
     }
   }
 
