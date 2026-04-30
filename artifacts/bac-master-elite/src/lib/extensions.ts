@@ -173,7 +173,9 @@ export const useEnsureInvitation = () => {
 
 /**
  * Public-facing: registers a click on a referral link.
- * Increments invitations.clicks AND adds +10 points to the inviter.
+ * Calls the SECURITY DEFINER RPC `register_referral_click` so anonymous
+ * visitors can increment the inviter's clicks + points without needing
+ * permissive UPDATE policies on `invitations` or `profiles`.
  * Idempotent per browser via localStorage so refreshing doesn't farm points.
  */
 export const registerReferralClick = async (code: string) => {
@@ -182,33 +184,63 @@ export const registerReferralClick = async (code: string) => {
   if (typeof window !== "undefined" && window.localStorage.getItem(seenKey)) {
     return;
   }
-  const { data: invitation, error } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("invitation_code", code)
-    .maybeSingle();
-  if (error || !invitation) return;
-
-  const newClicks = (invitation.clicks ?? 0) + 1;
-  await supabase
-    .from("invitations")
-    .update({ clicks: newClicks })
-    .eq("id", invitation.id);
-
-  const { data: inviter } = await supabase
-    .from("profiles")
-    .select("points")
-    .eq("id", invitation.user_id)
-    .maybeSingle();
-  const newTotal = (inviter?.points ?? 0) + 10;
-  await supabase
-    .from("profiles")
-    .update({ points: newTotal })
-    .eq("id", invitation.user_id);
-
+  const { error } = await supabase.rpc("register_referral_click", { p_code: code });
+  if (error) {
+    console.warn("[register_referral_click] RPC failed:", error.message);
+    return;
+  }
   if (typeof window !== "undefined") {
     window.localStorage.setItem(seenKey, "1");
   }
+};
+
+/**
+ * Returns the current user's existing review, if any.
+ * Used to switch the form between "Publish" and "Update" mode.
+ */
+export const useMyReview = (userId?: string) =>
+  useQuery({
+    queryKey: ["my-review", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[reviews] my-review fetch:", error.message);
+        return null;
+      }
+      return (data ?? null) as Review | null;
+    },
+    enabled: !!userId,
+  });
+
+export const useUpdateReview = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<Pick<Review, "name" | "rating" | "comment" | "serie">>;
+    }) => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data as Review;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reviews"] });
+      qc.invalidateQueries({ queryKey: ["my-review"] });
+    },
+  });
 };
 
 export const useReviews = () =>

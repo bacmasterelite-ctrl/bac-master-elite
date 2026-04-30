@@ -39,5 +39,15 @@ New features added without modifying existing logic:
 
 Tables Supabase attendues : `invitations`, `reviews`, `quiz_results`, `daily_usage`. Si absentes, le code log un avertissement sans crasher.
 
+### Setup Supabase requis (à appliquer dans SQL Editor)
+1. `.local/sql/rls_policies.sql` — politiques RLS reviews + invitations
+2. `.local/sql/additional_setup.sql` — contrainte unique reviews + RPC `register_referral_click`
+
+### GeniusPay
+- `api/create-payment.ts` — Vercel serverless (utilise env `GENIUSPAY_*`, fallback sur ancienne orthographe `GENUISPAY_*`)
+- `supabase/functions/geniuspay-webhook/index.ts` — Edge Function à déployer via `supabase functions deploy geniuspay-webhook --no-verify-jwt`
+- Webhook répond 200 instantané puis traite en arrière-plan (`EdgeRuntime.waitUntil`)
+- Extraction tolérante du metadata + status (probe toutes les structures GeniusPay possibles)
+
 Fichiers nouveaux : `src/lib/extensions.ts`, `src/lib/quizBank.ts`, `src/components/{RefTracker,TestimonialsCarousel,TeachersSection}.tsx`, `src/pages/{Quiz,Parrainage}.tsx`.
 Fichiers édités (additif) : `src/App.tsx`, `src/components/DashboardLayout.tsx`, `src/pages/Landing.tsx`, `src/pages/Dashboard.tsx`.

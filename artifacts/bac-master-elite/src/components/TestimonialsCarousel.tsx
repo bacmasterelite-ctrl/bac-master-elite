@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Quote, Send, Loader2 } from "lucide-react";
+import { Star, Quote, Send, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile } from "@/lib/queries";
-import { useReviews, useAddReview, type Review } from "@/lib/extensions";
+import {
+  useReviews,
+  useAddReview,
+  useMyReview,
+  useUpdateReview,
+  type Review,
+} from "@/lib/extensions";
 import { cn } from "@/lib/utils";
 
 const FAKE_TESTIMONIALS: Review[] = [
@@ -89,7 +95,9 @@ export default function TestimonialsCarousel({
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const { data: realReviews = [] } = useReviews();
+  const { data: myReview } = useMyReview(user?.id);
   const addReview = useAddReview();
+  const updateReview = useUpdateReview();
   const { toast } = useToast();
 
   const all = useMemo<Review[]>(
@@ -111,13 +119,21 @@ export default function TestimonialsCarousel({
 
   const visible = all.slice(page * perPage, page * perPage + perPage);
 
+  const isEditing = !!myReview;
   const [name, setName] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
+  // Hydrate form from existing review (when editing) or from profile name
   useEffect(() => {
-    if (!name && profile?.full_name) setName(profile.full_name);
-  }, [profile?.full_name, name]);
+    if (myReview) {
+      setName(myReview.name ?? "");
+      setRating(myReview.rating ?? 5);
+      setComment(myReview.comment ?? "");
+    } else if (!name && profile?.full_name) {
+      setName(profile.full_name);
+    }
+  }, [myReview, profile?.full_name, name]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,26 +148,44 @@ export default function TestimonialsCarousel({
       return;
     }
     try {
-      await addReview.mutateAsync({
-        user_id: user?.id ?? null,
-        name: cleanName,
-        rating,
-        comment: cleanComment,
-        serie: profile?.serie ?? null,
-      });
-      toast({ title: "Merci !", description: "Votre avis a bien été publié." });
-      setComment("");
-      setRating(5);
+      if (myReview?.id) {
+        await updateReview.mutateAsync({
+          id: myReview.id,
+          patch: {
+            name: cleanName,
+            rating,
+            comment: cleanComment,
+            serie: profile?.serie ?? null,
+          },
+        });
+        toast({ title: "Avis mis à jour", description: "Vos modifications sont en ligne." });
+      } else {
+        await addReview.mutateAsync({
+          user_id: user?.id ?? null,
+          name: cleanName,
+          rating,
+          comment: cleanComment,
+          serie: profile?.serie ?? null,
+        });
+        toast({ title: "Merci !", description: "Votre avis a bien été publié." });
+        setComment("");
+        setRating(5);
+      }
     } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = /duplicate|unique/i.test(raw)
+        ? "Vous avez déjà publié un avis. Vous pouvez le modifier."
+        : raw;
       toast({
         title: "Impossible de publier",
-        description: err instanceof Error ? err.message : String(err),
+        description: friendly,
         variant: "destructive",
       });
     }
   };
 
   const headerLabel = variant === "landing" ? "Ils témoignent" : "Voix de la communauté";
+  const isPending = addReview.isPending || updateReview.isPending;
 
   return (
     <div className="space-y-6">
@@ -229,10 +263,24 @@ export default function TestimonialsCarousel({
           onSubmit={submit}
           className="rounded-2xl border border-border bg-card p-5 shadow-sm"
         >
-          <p className="text-sm font-semibold">Partagez votre avis</p>
-          <p className="text-xs text-muted-foreground">
-            Aidez d'autres élèves en racontant votre expérience.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">
+                {isEditing ? "Modifier votre avis" : "Partagez votre avis"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isEditing
+                  ? "Vous avez déjà publié un avis — modifiez-le ci-dessous."
+                  : "Aidez d'autres élèves en racontant votre expérience."}
+              </p>
+            </div>
+            {isEditing && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                <Pencil className="h-3 w-3" />
+                Édition
+              </span>
+            )}
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Input
               placeholder="Votre nom"
@@ -275,16 +323,18 @@ export default function TestimonialsCarousel({
           <div className="mt-3 flex justify-end">
             <Button
               type="submit"
-              disabled={addReview.isPending}
+              disabled={isPending}
               className="rounded-full bg-hero-gradient text-white hover:opacity-90"
               data-testid="button-submit-review"
             >
-              {addReview.isPending ? (
+              {isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : isEditing ? (
+                <Pencil className="mr-2 h-4 w-4" />
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              Publier mon avis
+              {isEditing ? "Mettre à jour mon avis" : "Publier mon avis"}
             </Button>
           </div>
         </form>
