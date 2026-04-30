@@ -44,6 +44,18 @@ Tables Supabase attendues : `invitations`, `reviews`, `quiz_results`, `daily_usa
 2. `.local/sql/additional_setup.sql` — contrainte unique reviews + RPC `register_referral_click`
 3. `.local/sql/referral_v2.sql` — colonne `profiles.referrer_id` + RPC `register_referral_signup` (parrainage v2 : `?ref=user_id`)
 
+### Affichage leçon
+- `Lecon.tsx` affiche le contenu HTML+SVG via `dangerouslySetInnerHTML` (plus ReactMarkdown)
+- SVG : `[&_svg]:w-full [&_svg]:h-auto` — respecte le viewBox en pleine largeur
+- Bouton "Télécharger PDF" appelle `window.print()` (réservé Premium) ; CSS `@media print` dans `index.css` masque navbar/boutons, garde les SVG nets
+- Bouton Retour → `/dashboard/cours?subject=<matière>` (la page Cours filtre déjà par `?subject=`)
+
+### Limites non-premium (3 leçons/jour + 3 questions chatbot/jour)
+- Composant `PremiumLimitModal` (`src/components/PremiumLimitModal.tsx`) réutilisable (types : `"lessons"` | `"chatbot"`)
+- Leçons : `useCheckCourseAccess` (RPC `check_and_increment_course`) → si `!allowed`, modal + écran bloqué
+- Chatbot : `useIncrementAIQuestion` (RPC `increment_ai_question`) → si `!res.allowed` ou `blockedByQuota`, modal
+- La limite est vérifiée côté client ; le RPC est SECURITY DEFINER (bloquage côté DB)
+
 ### Reset password
 - Bouton "Mot de passe oublié ?" sur `/login` ouvre un dialogue → `supabase.auth.resetPasswordForEmail(email, { redirectTo: <origin>/reset-password })`
 - Page `/reset-password` (publique, hors PublicOnlyRoute) → `supabase.auth.updateUser({ password })` quand session recovery présente

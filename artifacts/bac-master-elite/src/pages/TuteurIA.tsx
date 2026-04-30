@@ -20,6 +20,7 @@ import {
   Lock,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PremiumLimitModal from "@/components/PremiumLimitModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from "@/lib/gemini";
@@ -85,6 +86,7 @@ export default function TuteurIA() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [attachedImage, setAttachedImage] = useState<{
     file: File;
     dataUrl: string;
@@ -156,18 +158,17 @@ export default function TuteurIA() {
 
     if (!trimmed && !image) return;
     if (isLoading) return;
-    if (blockedByQuota) return;
+    if (blockedByQuota) {
+      setLimitModalOpen(true);
+      return;
+    }
     if (image && !isPremium) return;
 
     if (!isPremium && user?.id) {
       try {
         const res = await incrementAI(user.id);
         if (!res.allowed) {
-          toast({
-            title: "Limite quotidienne atteinte",
-            description: `Vous avez utilisé vos ${FREE_AI_DAILY_LIMIT} questions gratuites du jour. Passez Premium pour continuer.`,
-            variant: "destructive",
-          });
+          setLimitModalOpen(true);
           return;
         }
       } catch (err) {
@@ -214,6 +215,11 @@ export default function TuteurIA() {
 
   return (
     <DashboardLayout>
+      <PremiumLimitModal
+        open={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        type="chatbot"
+      />
       <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-4xl flex-col">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
