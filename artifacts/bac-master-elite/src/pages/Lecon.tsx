@@ -107,39 +107,37 @@ export default function Lecon() {
     : "/dashboard/cours";
 
   // Tâche 1 : impression via window.print()
-  const handlePrint = async () => {
+  const handlePrint = () => {
     const element = document.getElementById("lesson-content");
     if (!element) return;
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.cssText = "font-family:Arial,sans-serif;color:#111;background:white;padding:20px;max-width:700px";
-    // Supprimer toutes les classes Tailwind et garder seulement les styles inline
-    clone.querySelectorAll('*').forEach((el) => {
-      const e = el as HTMLElement;
-      const computed = window.getComputedStyle(e);
-      const safe = ['color','background-color','font-weight','font-size','padding','margin','border','text-align'];
-      safe.forEach(prop => {
-        const val = computed.getPropertyValue(prop);
-        if (val && !val.includes('oklch')) {
-          e.style.setProperty(prop, val);
-        } else {
-          e.style.removeProperty(prop);
-        }
-      });
-      e.removeAttribute('class');
-    });
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-    const html2pdf = (await import('html2pdf.js')).default;
-    html2pdf().set({
-      margin: 10,
-      filename: title.replace(/\s+/g, '_') + '.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(clone).save().then(() => {
-      document.body.removeChild(wrapper);
-    });
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:0';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/>
+      <title>${title}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;background:white;padding:20px;max-width:700px;margin:0 auto}
+        h1,h2,h3{color:#f97316;font-weight:700}
+        table{width:100%;border-collapse:collapse;margin:16px 0}
+        th{background:#f97316;color:white;padding:8px;border:1px solid #ea580c;text-align:left}
+        td{padding:8px;border:1px solid #e5e7eb}
+        tr:nth-child(even){background:#f9fafb}
+        svg{width:100%;height:auto;max-width:500px;display:block;margin:16px auto}
+        p{line-height:1.7;margin:8px 0}
+        ul{padding-left:24px}
+        li{margin:4px 0}
+      </style>
+    </head><body>
+      <h1>${title}</h1>
+      ${element.innerHTML}
+    </body></html>`);
+    doc.close();
+    iframe.contentWindow!.focus();
+    iframe.contentWindow!.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
   };
 
   if (isLoading) {
