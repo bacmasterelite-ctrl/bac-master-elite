@@ -107,8 +107,29 @@ export default function Lecon() {
     : "/dashboard/cours";
 
   // Tâche 1 : impression via window.print()
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const element = document.getElementById("lesson-content");
+    if (!element) return;
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.style.cssText = "font-family:Arial,sans-serif;color:#111;background:white;padding:20px;max-width:700px";
+    clone.querySelectorAll('*').forEach((el) => {
+      const e = el as HTMLElement;
+      e.style.color = e.style.color?.includes('oklch') ? '#111' : e.style.color;
+      e.style.background = e.style.background?.includes('oklch') ? 'white' : e.style.background;
+    });
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    const html2pdf = (await import('html2pdf.js')).default;
+    html2pdf().set({
+      margin: 10,
+      filename: title.replace(/\s+/g, '_') + '.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(clone).save().then(() => {
+      document.body.removeChild(wrapper);
+    });
   };
 
   if (isLoading) {
