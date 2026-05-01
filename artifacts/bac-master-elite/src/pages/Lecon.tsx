@@ -106,7 +106,6 @@ export default function Lecon() {
     ? `/dashboard/cours?subject=${encodeURIComponent(subject.toLowerCase())}`
     : "/dashboard/cours";
 
-  // Tâche 1 : impression via window.print()
   const handlePrint = () => {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const margin = 40;
@@ -124,38 +123,34 @@ export default function Lecon() {
         doc.text(l, margin, y);
         y += size * 1.4;
       });
-      y += 6;
+      y += 4;
     };
 
-    // Titre
     addText(title, 22, true, [30, 30, 30]);
     doc.setDrawColor(249, 115, 22).setLineWidth(1.5).line(margin, y, 555, y);
     y += 20;
 
-    // Convertir le content en HTML propre avant parsing
     const htmlContent = formatContent(content);
     const parser = new DOMParser();
     const htmlDoc = parser.parseFromString(htmlContent, 'text/html');
-    const nodes = htmlDoc.body.childNodes;
 
-    const processNodes = (nodeList: NodeList) => {
-      nodeList.forEach((node: ChildNode) => {
+    htmlDoc.body.childNodes.forEach((node) => {
       const el = node as HTMLElement;
       if (!el.tagName) return;
       const tag = el.tagName.toLowerCase();
-      // Ignorer SVG complètement
       if (tag === 'svg') {
         if (y > pageH) { doc.addPage(); y = 60; }
-        doc.setFillColor(240, 253, 244).rect(margin, y, maxW, 25, 'F');
-        doc.setFont("helvetica", "italic").setFontSize(9).setTextColor(100,100,100);
-        doc.text('[Schéma — voir version en ligne]', margin + 8, y + 16);
-        y += 35;
+        doc.setFillColor(240, 253, 244).rect(margin, y, maxW, 22, 'F');
+        doc.setFont("helvetica", "italic").setFontSize(9).setTextColor(100, 100, 100);
+        doc.text('[Schéma — voir version en ligne]', margin + 8, y + 15);
+        y += 32;
         return;
       }
       const text = el.textContent?.trim() || '';
-
+      if (!text) return;
+      if (y > pageH) { doc.addPage(); y = 60; }
       if (tag === 'h1' || tag === 'h2') {
-        y += 10;
+        y += 8;
         addText(text, 14, true, [249, 115, 22]);
       } else if (tag === 'h3') {
         addText(text, 12, true, [249, 115, 22]);
@@ -164,7 +159,7 @@ export default function Lecon() {
       } else if (tag === 'ul') {
         el.querySelectorAll('li').forEach((li) => {
           if (y > pageH) { doc.addPage(); y = 60; }
-          addText('• ' + li.textContent?.trim(), 11, false, [30, 30, 30]);
+          addText('• ' + (li.textContent?.trim() || ''), 11, false, [30, 30, 30]);
         });
       } else if (tag === 'table') {
         const rows: string[][] = [];
@@ -179,19 +174,12 @@ export default function Lecon() {
             startY: y,
             theme: 'grid',
             styles: { fontSize: 10, cellPadding: 6 },
-            headStyles: { fillColor: [249, 115, 22], textColor: [255,255,255], fontStyle: 'bold' },
+            headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
             alternateRowStyles: { fillColor: [245, 247, 250] },
             margin: { left: margin, right: margin }
           });
           y = (doc as any).lastAutoTable?.finalY + 20 || y + 40;
         }
-      } else if (tag === 'svg') {
-        // SVG → texte indicatif
-        if (y > pageH) { doc.addPage(); y = 60; }
-        doc.setFillColor(240, 253, 244).rect(margin, y, maxW, 30, 'F');
-        doc.setFont("helvetica", "italic").setFontSize(10).setTextColor(100,100,100);
-        doc.text('[Schéma illustratif — voir la version en ligne]', margin + 10, y + 18);
-        y += 45;
       }
     });
 
@@ -199,7 +187,7 @@ export default function Lecon() {
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = title.replace(/\s+/g, '_') + '.pdf';
+    a.download = title.replace(/s+/g, '_') + '.pdf';
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -207,6 +195,7 @@ export default function Lecon() {
       URL.revokeObjectURL(url);
     }, 1000);
   };
+
 
   if (isLoading) {
     return (
