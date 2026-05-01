@@ -132,9 +132,10 @@ export default function Lecon() {
     doc.setDrawColor(249, 115, 22).setLineWidth(1.5).line(margin, y, 555, y);
     y += 20;
 
-    // Parser le HTML
+    // Convertir le content en HTML propre avant parsing
+    const htmlContent = formatContent(content);
     const parser = new DOMParser();
-    const htmlDoc = parser.parseFromString(content, 'text/html');
+    const htmlDoc = parser.parseFromString(htmlContent, 'text/html');
     const nodes = htmlDoc.body.childNodes;
 
     nodes.forEach((node: ChildNode) => {
