@@ -184,7 +184,17 @@ export default function Lecon() {
       }
     });
 
-    doc.save(title.replace(/\s+/g, '_') + '.pdf');
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = title.replace(/\s+/g, '_') + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
   };
 
   if (isLoading) {
