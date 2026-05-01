@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Link, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Crown, Download, Loader2, Lock } from "lucide-react";
@@ -14,6 +16,54 @@ function pickString(record: Record<string, unknown>, ...keys: string[]): string 
     if (typeof v === "string" && v.trim().length > 0) return v;
   }
   return "";
+}
+
+function formatContent(text: string): string {
+  if (!text) return "";
+  if (text.includes("<h2") || text.includes("<svg")) return text;
+  if (text.includes("##") || text.includes("**")) {
+    return text
+      .replace(/^### (.+)$/gm, '<h3 style="color:#f97316;font-weight:700;font-size:1rem;margin:16px 0 6px">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 style="color:#f97316;font-weight:700;font-size:1.2rem;margin:20px 0 8px">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 style="color:#f97316;font-weight:700;font-size:1.4rem;margin:24px 0 10px">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/^- (.+)$/gm, '<li style="margin:4px 0;margin-left:24px">$1</li>')
+      .replace(/^\|(.+)\|$/gm, (row) => {
+        const cells = row.split('|').filter(c => c.trim());
+        return '<tr>' + cells.map(c => '<td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:left">' + c.trim() + '</td>').join('') + '</tr>';
+      })
+      .replace(/(<tr>.*<\/tr>\n?)+/gs, (block) => {
+        const rows = block.trim().split('\n').filter(r => !r.includes('---'));
+        if (rows.length === 0) return block;
+        const header = rows[0].replace(/<td/g, '<th style="background:#f97316;color:white;font-weight:700;padding:8px 12px;border:1px solid #ea580c;text-align:left"').replace(/<\/td>/g, '</th>');
+        const body = rows.slice(1).join('\n');
+        return '<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:0.95rem"><thead>' + header + '</thead><tbody>' + body + '</tbody></table>';
+      });
+  }
+  let result = "";
+  const lines = text.split("\n");
+  let inList = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if (inList) { result += "</ul>"; inList = false; }
+      result += "<br/>";
+      continue;
+    }
+    if (/^[A-Z][A-Z\s\-:]{4,}$/.test(line)) {
+      if (inList) { result += "</ul>"; inList = false; }
+      result += '<h2 style="color:#f97316;font-weight:700;font-size:1.2rem;margin:20px 0 8px">' + line + '</h2>';
+    } else if (line.startsWith("- ") || line.startsWith("• ")) {
+      if (!inList) { result += '<ul style="list-style:disc;padding-left:24px;margin:8px 0">'; inList = true; }
+      result += '<li style="margin:4px 0">' + line.slice(2) + '</li>';
+    } else {
+      if (inList) { result += "</ul>"; inList = false; }
+      result += '<p style="margin:8px 0;line-height:1.7">' + line + '</p>';
+    }
+  }
+  if (inList) result += "</ul>";
+  return result;
 }
 
 export default function Lecon() {
@@ -58,7 +108,59 @@ export default function Lecon() {
 
   // Tâche 1 : impression via window.print()
   const handlePrint = () => {
-    window.print();
+    
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 40;
+    let y = 50;
+    const clean = (t: string) => t.replace(/<[^>]+>/g, '').trim();
+    doc.setFont("helvetica", "bold").setFontSize(22);
+    doc.text(clean(title), margin, y); y += 30;
+    doc.setDrawColor(249, 115, 22).setLineWidth(1.5).line(margin, y, 555, y); y += 20;
+    doc.setFont("helvetica", "normal").setFontSize(12);
+    const lines = content.split("\n").filter(l => l.trim());
+    let tableRows: string[][] = [];
+    const flushTable = () => {
+      if (tableRows.length === 0) return;
+      const head = [tableRows[0]];
+      const body = tableRows.slice(1).filter(r => !r.every(c => /^-+$/.test(c.trim())));
+      autoTable(doc, {
+        head, body, startY: y,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [249, 115, 22], textColor: [255,255,255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { left: margin, right: margin }
+      });
+      y = (doc as any).lastAutoTable?.finalY + 15 || y + 40;
+      tableRows = [];
+    };
+    lines.forEach(line => {
+      const t = clean(line);
+      if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+        const cells = line.split('|').filter(c => c.trim()).map(c => clean(c));
+        tableRows.push(cells);
+        return;
+      } else { flushTable(); }
+      if (!t) return;
+      if (y > 780) { doc.addPage(); y = 50; }
+      if (/^[A-ZÀÂÉÈÊËÎÏÔÙÛÜÇ][A-ZÀÂÉÈÊËÎÏÔÙÛÜÇ\s]{4,}$/.test(t)) {
+        y += 10;
+        doc.setFont("helvetica", "bold").setFontSize(14);
+        doc.setTextColor(249, 115, 22);
+        doc.text(t, margin, y); y += 20;
+        doc.setFont("helvetica", "normal").setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+      } else {
+        const wrapped = doc.splitTextToSize(t, 515);
+        wrapped.forEach((l: string) => {
+          if (y > 780) { doc.addPage(); y = 50; }
+          doc.text(l, margin, y); y += 16;
+        });
+        y += 6;
+      }
+    });
+    flushTable();
+    doc.save(title.replace(/\s+/g, '_') + '.pdf');
   };
 
   if (isLoading) {
@@ -182,7 +284,7 @@ export default function Lecon() {
                   [&_img]:w-full [&_img]:h-auto
                 "
                 data-testid="lesson-content"
-                dangerouslySetInnerHTML={{ __html: content }}
+                dangerouslySetInnerHTML={{ __html: formatContent(content) }}
               />
             </div>
           </motion.div>
