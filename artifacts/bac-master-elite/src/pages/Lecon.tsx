@@ -138,10 +138,20 @@ export default function Lecon() {
     const htmlDoc = parser.parseFromString(htmlContent, 'text/html');
     const nodes = htmlDoc.body.childNodes;
 
-    nodes.forEach((node: ChildNode) => {
+    const processNodes = (nodeList: NodeList) => {
+      nodeList.forEach((node: ChildNode) => {
       const el = node as HTMLElement;
       if (!el.tagName) return;
       const tag = el.tagName.toLowerCase();
+      // Ignorer SVG complètement
+      if (tag === 'svg') {
+        if (y > pageH) { doc.addPage(); y = 60; }
+        doc.setFillColor(240, 253, 244).rect(margin, y, maxW, 25, 'F');
+        doc.setFont("helvetica", "italic").setFontSize(9).setTextColor(100,100,100);
+        doc.text('[Schéma — voir version en ligne]', margin + 8, y + 16);
+        y += 35;
+        return;
+      }
       const text = el.textContent?.trim() || '';
 
       if (tag === 'h1' || tag === 'h2') {
