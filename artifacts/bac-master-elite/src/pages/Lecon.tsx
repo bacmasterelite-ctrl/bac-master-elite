@@ -108,59 +108,7 @@ export default function Lecon() {
 
   // Tâche 1 : impression via window.print()
   const handlePrint = () => {
-    
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const margin = 40;
-    let y = 50;
-    const clean = (t: string) => t.replace(/<[^>]+>/g, '').trim();
-    doc.setFont("helvetica", "bold").setFontSize(22);
-    doc.text(clean(title), margin, y); y += 30;
-    doc.setDrawColor(249, 115, 22).setLineWidth(1.5).line(margin, y, 555, y); y += 20;
-    doc.setFont("helvetica", "normal").setFontSize(12);
-    const lines = content.split("\n").filter(l => l.trim());
-    let tableRows: string[][] = [];
-    const flushTable = () => {
-      if (tableRows.length === 0) return;
-      const head = [tableRows[0]];
-      const body = tableRows.slice(1).filter(r => !r.every(c => /^-+$/.test(c.trim())));
-      autoTable(doc, {
-        head, body, startY: y,
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 6 },
-        headStyles: { fillColor: [249, 115, 22], textColor: [255,255,255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
-        margin: { left: margin, right: margin }
-      });
-      y = (doc as any).lastAutoTable?.finalY + 15 || y + 40;
-      tableRows = [];
-    };
-    lines.forEach(line => {
-      const t = clean(line);
-      if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-        const cells = line.split('|').filter(c => c.trim()).map(c => clean(c));
-        tableRows.push(cells);
-        return;
-      } else { flushTable(); }
-      if (!t) return;
-      if (y > 780) { doc.addPage(); y = 50; }
-      if (/^[A-ZÀÂÉÈÊËÎÏÔÙÛÜÇ][A-ZÀÂÉÈÊËÎÏÔÙÛÜÇ\s]{4,}$/.test(t)) {
-        y += 10;
-        doc.setFont("helvetica", "bold").setFontSize(14);
-        doc.setTextColor(249, 115, 22);
-        doc.text(t, margin, y); y += 20;
-        doc.setFont("helvetica", "normal").setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-      } else {
-        const wrapped = doc.splitTextToSize(t, 515);
-        wrapped.forEach((l: string) => {
-          if (y > 780) { doc.addPage(); y = 50; }
-          doc.text(l, margin, y); y += 16;
-        });
-        y += 6;
-      }
-    });
-    flushTable();
-    doc.save(title.replace(/\s+/g, '_') + '.pdf');
+    window.print();
   };
 
   if (isLoading) {
@@ -207,7 +155,7 @@ export default function Lecon() {
                 data-testid="button-print"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Télécharger PDF
+                Sauvegarder en PDF
               </Button>
             )}
             {!isPremium && (
