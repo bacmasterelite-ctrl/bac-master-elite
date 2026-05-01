@@ -112,10 +112,20 @@ export default function Lecon() {
     if (!element) return;
     const clone = element.cloneNode(true) as HTMLElement;
     clone.style.cssText = "font-family:Arial,sans-serif;color:#111;background:white;padding:20px;max-width:700px";
+    // Supprimer toutes les classes Tailwind et garder seulement les styles inline
     clone.querySelectorAll('*').forEach((el) => {
       const e = el as HTMLElement;
-      e.style.color = e.style.color?.includes('oklch') ? '#111' : e.style.color;
-      e.style.background = e.style.background?.includes('oklch') ? 'white' : e.style.background;
+      const computed = window.getComputedStyle(e);
+      const safe = ['color','background-color','font-weight','font-size','padding','margin','border','text-align'];
+      safe.forEach(prop => {
+        const val = computed.getPropertyValue(prop);
+        if (val && !val.includes('oklch')) {
+          e.style.setProperty(prop, val);
+        } else {
+          e.style.removeProperty(prop);
+        }
+      });
+      e.removeAttribute('class');
     });
     const wrapper = document.createElement('div');
     wrapper.appendChild(clone);
