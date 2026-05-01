@@ -134,7 +134,8 @@ export default function Lecon() {
     const parser = new DOMParser();
     const htmlDoc = parser.parseFromString(htmlContent, 'text/html');
 
-    htmlDoc.body.childNodes.forEach((node) => {
+    const allElements = htmlDoc.body.querySelectorAll('h1,h2,h3,p,ul,table,svg');
+    allElements.forEach((node) => {
       const el = node as HTMLElement;
       if (!el.tagName) return;
       const tag = el.tagName.toLowerCase();
