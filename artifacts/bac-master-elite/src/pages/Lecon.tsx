@@ -108,36 +108,83 @@ export default function Lecon() {
 
   // Tâche 1 : impression via window.print()
   const handlePrint = () => {
-    const element = document.getElementById("lesson-content");
-    if (!element) return;
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:0';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(`<!DOCTYPE html><html><head>
-      <meta charset="utf-8"/>
-      <title>${title}</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#111;background:white;padding:20px;max-width:700px;margin:0 auto}
-        h1,h2,h3{color:#f97316;font-weight:700}
-        table{width:100%;border-collapse:collapse;margin:16px 0}
-        th{background:#f97316;color:white;padding:8px;border:1px solid #ea580c;text-align:left}
-        td{padding:8px;border:1px solid #e5e7eb}
-        tr:nth-child(even){background:#f9fafb}
-        svg{width:100%;height:auto;max-width:500px;display:block;margin:16px auto}
-        p{line-height:1.7;margin:8px 0}
-        ul{padding-left:24px}
-        li{margin:4px 0}
-      </style>
-    </head><body>
-      <h1>${title}</h1>
-      ${element.innerHTML}
-    </body></html>`);
-    doc.close();
-    iframe.contentWindow!.focus();
-    iframe.contentWindow!.print();
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 40;
+    let y = 60;
+    const pageH = 780;
+    const maxW = 515;
+
+    const addText = (text: string, size: number, bold: boolean, color: number[]) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal")
+         .setFontSize(size)
+         .setTextColor(color[0], color[1], color[2]);
+      const lines = doc.splitTextToSize(text, maxW);
+      lines.forEach((l: string) => {
+        if (y > pageH) { doc.addPage(); y = 60; }
+        doc.text(l, margin, y);
+        y += size * 1.4;
+      });
+      y += 6;
+    };
+
+    // Titre
+    addText(title, 22, true, [30, 30, 30]);
+    doc.setDrawColor(249, 115, 22).setLineWidth(1.5).line(margin, y, 555, y);
+    y += 20;
+
+    // Parser le HTML
+    const parser = new DOMParser();
+    const htmlDoc = parser.parseFromString(content, 'text/html');
+    const nodes = htmlDoc.body.childNodes;
+
+    nodes.forEach((node: ChildNode) => {
+      const el = node as HTMLElement;
+      if (!el.tagName) return;
+      const tag = el.tagName.toLowerCase();
+      const text = el.textContent?.trim() || '';
+
+      if (tag === 'h1' || tag === 'h2') {
+        y += 10;
+        addText(text, 14, true, [249, 115, 22]);
+      } else if (tag === 'h3') {
+        addText(text, 12, true, [249, 115, 22]);
+      } else if (tag === 'p') {
+        addText(text, 11, false, [30, 30, 30]);
+      } else if (tag === 'ul') {
+        el.querySelectorAll('li').forEach((li) => {
+          if (y > pageH) { doc.addPage(); y = 60; }
+          addText('• ' + li.textContent?.trim(), 11, false, [30, 30, 30]);
+        });
+      } else if (tag === 'table') {
+        const rows: string[][] = [];
+        el.querySelectorAll('tr').forEach((tr) => {
+          const cells = Array.from(tr.querySelectorAll('th,td')).map(c => c.textContent?.trim() || '');
+          if (cells.length) rows.push(cells);
+        });
+        if (rows.length > 0) {
+          autoTable(doc, {
+            head: [rows[0]],
+            body: rows.slice(1),
+            startY: y,
+            theme: 'grid',
+            styles: { fontSize: 10, cellPadding: 6 },
+            headStyles: { fillColor: [249, 115, 22], textColor: [255,255,255], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { left: margin, right: margin }
+          });
+          y = (doc as any).lastAutoTable?.finalY + 20 || y + 40;
+        }
+      } else if (tag === 'svg') {
+        // SVG → texte indicatif
+        if (y > pageH) { doc.addPage(); y = 60; }
+        doc.setFillColor(240, 253, 244).rect(margin, y, maxW, 30, 'F');
+        doc.setFont("helvetica", "italic").setFontSize(10).setTextColor(100,100,100);
+        doc.text('[Schéma illustratif — voir la version en ligne]', margin + 10, y + 18);
+        y += 45;
+      }
+    });
+
+    doc.save(title.replace(/\s+/g, '_') + '.pdf');
   };
 
   if (isLoading) {
