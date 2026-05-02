@@ -65,7 +65,7 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   doc.setFontSize(10);
   doc.setTextColor(217, 119, 6);
   const label = `${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`;
-  const labelW = doc.getTextWidth(label);
+  const labelW = doc.getStringUnitWidth(label);
   doc.text(label, (pageWidth - labelW) / 2, cursorY);
   cursorY += 22;
 
@@ -73,7 +73,7 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   doc.setFontSize(22);
   doc.setTextColor(17, 24, 39);
   const matiereText = a.matiere.toUpperCase();
-  const matiereW = doc.getTextWidth(matiereText);
+  const matiereW = doc.getStringUnitWidth(matiereText);
   doc.text(matiereText, (pageWidth - matiereW) / 2, cursorY);
   cursorY += 28;
 
@@ -81,7 +81,7 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
   const sessionText = `Session ${a.session} ${a.annee}  •  Durée : ${a.duree}  •  Coefficient : 4`;
-  const sessionW = doc.getTextWidth(sessionText);
+  const sessionW = doc.getStringUnitWidth(sessionText);
   doc.text(sessionText, (pageWidth - sessionW) / 2, cursorY);
   cursorY += 18;
 
