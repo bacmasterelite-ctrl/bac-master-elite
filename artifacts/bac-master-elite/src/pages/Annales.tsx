@@ -64,19 +64,25 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(217, 119, 6);
-  doc.text(`${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`, centerX, cursorY, { align: "center" });
+  const label = `${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`;
+  const labelW = doc.getTextWidth(label);
+  doc.text(label, (pageWidth - labelW) / 2, cursorY);
   cursorY += 22;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(17, 24, 39);
-  doc.text(a.matiere.toUpperCase(), centerX, cursorY, { align: "center" });
+  const matiereText = a.matiere.toUpperCase();
+  const matiereW = doc.getTextWidth(matiereText);
+  doc.text(matiereText, (pageWidth - matiereW) / 2, cursorY);
   cursorY += 28;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
-  doc.text(`Session ${a.session} ${a.annee}  •  Durée : ${a.duree}  •  Coefficient : 4`, centerX, cursorY, { align: "center" });
+  const sessionText = `Session ${a.session} ${a.annee}  •  Durée : ${a.duree}  •  Coefficient : 4`;
+  const sessionW = doc.getTextWidth(sessionText);
+  doc.text(sessionText, (pageWidth - sessionW) / 2, cursorY);
   cursorY += 18;
 
   doc.setDrawColor(229, 231, 235);
