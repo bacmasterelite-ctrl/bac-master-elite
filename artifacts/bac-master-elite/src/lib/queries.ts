@@ -220,22 +220,14 @@ export const useIncrementAIQuestion = () => {
  * Backed by la fonction RPC `check_and_increment_course`.
  */
 export const useCheckCourseAccess = () => {
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.rpc("check_and_increment_course", {
-        uid: userId,
+    mutationFn: async (params: { userId: string; type: "lesson" | "bot" }) => {
+      const { data, error } = await supabase.rpc("check_and_record_usage", {
+        p_user_id: params.userId,
+        p_type: params.type,
       });
       if (error) throw new Error(error.message);
-      const row = Array.isArray(data) ? data[0] : data;
-      return row as {
-        allowed: boolean;
-        remaining: number | null;
-        reason?: string;
-      };
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profile"] });
+      return data as { allowed: boolean; count: number };
     },
   });
 };
