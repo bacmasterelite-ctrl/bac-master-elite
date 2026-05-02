@@ -54,84 +54,66 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 72;
-  const marginRight = 72;
-  const usableWidth = pageWidth - marginLeft - marginRight;
-  const centerX = pageWidth / 2;
-  let cursorY = 60;
+  const ML = 72;
+  const usableWidth = pageWidth - ML * 2;
+  let y = 60;
 
-  // En-tête centré
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(217, 119, 6);
-  const label = `${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`;
-  const labelW = doc.getStringUnitWidth(label);
-  doc.text(label, (pageWidth - labelW) / 2, cursorY);
-  cursorY += 22;
+  const addLine = (text: string, size: number, bold: boolean, color: number[], indent = 0) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(text, usableWidth - indent);
+    for (const l of lines) {
+      if (y > pageHeight - ML) { doc.addPage(); y = ML; }
+      doc.text(l, ML + indent, y);
+      y += size * 1.35;
+    }
+  };
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(17, 24, 39);
-  const matiereText = a.matiere.toUpperCase();
-  const matiereW = doc.getStringUnitWidth(matiereText);
-  doc.text(matiereText, (pageWidth - matiereW) / 2, cursorY);
-  cursorY += 28;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(107, 114, 128);
-  const sessionText = `Session ${a.session} ${a.annee}  •  Durée : ${a.duree}  •  Coefficient : 4`;
-  const sessionW = doc.getStringUnitWidth(sessionText);
-  doc.text(sessionText, (pageWidth - sessionW) / 2, cursorY);
-  cursorY += 18;
-
+  // En-tête
+  addLine(`${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`, 10, true, [217, 119, 6]);
+  y += 4;
+  addLine(a.matiere.toUpperCase(), 20, true, [17, 24, 39]);
+  addLine(`Session ${a.session} ${a.annee}  •  Durée : ${a.duree}`, 10, false, [107, 114, 128]);
+  y += 4;
   doc.setDrawColor(229, 231, 235);
-  doc.line(margin, cursorY, pageWidth - margin, cursorY);
-  cursorY += 18;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(31, 41, 55);
+  doc.line(ML, y, pageWidth - ML, y);
+  y += 16;
 
   const body = (kind === "sujet" ? a.sujet_contenu : a.corrige_contenu).trim() ||
-    (kind === "sujet"
-      ? "Le sujet officiel sera intégré prochainement."
-      : "Le corrigé sera publié prochainement.");
+    (kind === "sujet" ? "Le sujet sera intégré prochainement." : "Le corrigé sera publié prochainement.");
 
-  const lineHeight = 16;
-  const paragraphs = body.split("\n");
-  for (const para of paragraphs) {
-    if (!para.trim()) { cursorY += 8; continue; }
-    const isTitre = para.startsWith("##") || para.startsWith("EXERCICE") || para.startsWith("PROBLÈME") || para.startsWith("PARTIE");
-    if (isTitre) {
-      cursorY += 6;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(249, 115, 22);
+  for (const para of body.split("\n")) {
+    const t = para.trim();
+    if (!t) { y += 6; continue; }
+    const cleaned = t.replace(/^#+\s*/, "").replace(/\*\*/g, "");
+    if (t.startsWith("## ") || /^(EXERCICE|PROBLÈME|PARTIE [ABC])/.test(t)) {
+      y += 10;
+      if (y > pageHeight - ML - 20) { doc.addPage(); y = ML; }
+      doc.setFillColor(255, 237, 213);
+      doc.rect(ML - 4, y - 12, usableWidth + 8, 17, "F");
+      addLine(cleaned, 12, true, [194, 65, 12]);
+      y += 2;
+    } else if (t.startsWith("### ")) {
+      y += 6;
+      addLine(cleaned, 11, true, [249, 115, 22]);
+    } else if (t.startsWith("- ") || t.startsWith("• ")) {
+      addLine("• " + cleaned.replace(/^[-•]\s*/, ""), 10, false, [31, 41, 55], 10);
     } else {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(31, 41, 55);
+      addLine(cleaned, 10, false, [31, 41, 55]);
+      y += 2;
     }
-    const cleaned = para.replace(/^#+\s*/, "").replace(/\*\*/g, "");
-    const lines = doc.splitTextToSize(cleaned, usableWidth);
-    for (const line of lines) {
-      if (cursorY + lineHeight > pageHeight - margin) { doc.addPage(); cursorY = margin; }
-      doc.text(line, margin, cursorY);
-      cursorY += lineHeight;
-    }
-    if (isTitre) cursorY += 4;
   }
 
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
     doc.setPage(p);
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
+    doc.setTextColor(150, 150, 150);
     doc.text(
-      `BAC MASTER ELITE — ${kind === "sujet" ? "Sujet" : "Corrigé"} ${a.matiere} ${a.annee} — Page ${p}/${totalPages}`,
-      margin, pageHeight - 24
+      `BAC MASTER ELITE — ${kind === "sujet" ? "Sujet" : "Corrigé"} ${a.matiere} ${a.annee} — Page ${p}/${total}`,
+      ML, pageHeight - 20
     );
   }
 
