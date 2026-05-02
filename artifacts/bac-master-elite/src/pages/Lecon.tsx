@@ -83,7 +83,7 @@ export default function Lecon() {
 
   // Tâche 3 : vérifier + incrémenter le compteur de leçons du jour
   useEffect(() => {
-    if (!user?.id || !lessonId) return;
+    if (premiumLoading || !user?.id || !lessonId || isPremium) return;
     
     checkCourseAccess.mutate({ userId: user.id, type: "lesson" }, {
       onSuccess: (result) => {
