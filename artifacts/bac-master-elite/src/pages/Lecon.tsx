@@ -58,15 +58,16 @@ export default function Lecon() {
 
   useEffect(() => {
     if (!user?.id || !lessonId) return;
-
+    
     checkCourseAccess.mutate(user.id, {
       onSuccess: (result) => {
-        console.log("Quota Check:", result);
         if (result.allowed === false) {
           setAccessDenied(true);
           setLimitModalOpen(true);
+        } else {
+          setAccessDenied(false);
         }
-      },
+      }
     });
   }, [user?.id, lessonId]);
 
@@ -77,7 +78,7 @@ export default function Lecon() {
 
   const handleDownloadPDF = () => {
     if (!isPremium) {
-      setLimitModalOpen(true);
+      window.location.href = "/dashboard/upgrade";
       return;
     }
     const doc = new jsPDF();
@@ -97,29 +98,38 @@ export default function Lecon() {
   return (
     <DashboardLayout>
       <PremiumLimitModal open={limitModalOpen} onClose={() => setLimitModalOpen(false)} type="lessons" />
+
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
         <div className="flex items-center justify-between">
           <Link href="/dashboard/cours">
-            <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" /> Retour</Button>
-          </Link>
-          {isPremium && (
-            <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="text-orange-600 border-orange-600">
-              <Download className="mr-2 h-4 w-4" /> PDF
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Retour
             </Button>
-          )}
+          </Link>
+          <Button 
+            onClick={handleDownloadPDF} 
+            variant="outline" 
+            size="sm" 
+            className="text-orange-600 border-orange-600 hover:bg-orange-50"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {isPremium ? "PDF" : "PDF Premium"}
+          </Button>
         </div>
 
         {accessDenied ? (
           <div className="rounded-3xl border bg-card p-12 text-center shadow-sm">
             <Lock className="mx-auto h-12 w-12 text-rose-600" />
-            <h2 className="mt-4 text-xl font-bold">Limite atteinte</h2>
-            <p className="mt-2 text-muted-foreground">Passez Premium pour voir plus de cours.</p>
+            <h2 className="mt-4 text-xl font-bold">Limite de 3 cours atteinte</h2>
+            <p className="mt-2 text-muted-foreground">Passez au statut Premium pour accéder à tous les cours sans limite.</p>
             <Link href="/dashboard/upgrade">
-              <Button className="mt-6 bg-orange-500 text-white"><Crown className="mr-2 h-4 w-4" /> Passer Premium</Button>
+              <Button className="mt-6 bg-orange-500 text-white hover:bg-orange-600">
+                <Crown className="mr-2 h-4 w-4" /> Devenir Premium
+              </Button>
             </Link>
           </div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-3xl border bg-card p-8 shadow-sm">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border bg-card p-8 shadow-sm">
             <p className="text-xs font-bold uppercase text-blue-600">{subject}</p>
             <h1 className="text-3xl font-bold mt-2">{title}</h1>
             <div className="border-t mt-6 pt-6">
