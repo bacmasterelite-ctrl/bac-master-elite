@@ -83,17 +83,9 @@ export default function Lecon() {
 
   // Tâche 3 : vérifier + incrémenter le compteur de leçons du jour
   useEffect(() => {
-<<<<<<< HEAD
-    if (premiumLoading || !user?.id || isPremium) return;
-    checkCourseAccess.mutate(user.id, {
-=======
     if (!user?.id || !lessonId) return;
     
     checkCourseAccess.mutate({ userId: user.id, type: "lesson" }, {
-<<<<<<< HEAD
-=======
->>>>>>> 6c6abe9 (feat: limite 3 lecons/jour via check_and_record_usage)
->>>>>>> b90cac7
       onSuccess: (result) => {
         if (!result.allowed) {
           setAccessDenied(true);
