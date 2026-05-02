@@ -74,7 +74,7 @@ export const useSubjects = () =>
   useQuery({ queryKey: ["subjects"], queryFn: () => safeFetch<Record<string, unknown>>("subjects") });
 
 export const useAnnals = () =>
-  useQuery({ queryKey: ["annals"], queryFn: () => safeFetch<Annal>("annales") });
+  useQuery({ queryKey: ["annals"], queryFn: () => safeFetch<Annal>("annals") });
 
 export const useProfile = (userId?: string) =>
   useQuery({
