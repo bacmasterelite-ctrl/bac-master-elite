@@ -83,17 +83,21 @@ export default function Lecon() {
 
   // Tâche 3 : vérifier + incrémenter le compteur de leçons du jour
   useEffect(() => {
+    console.log("Vérification Quota - User ID:", user?.id, "Premium Status:", isPremium);
     if (premiumLoading || !user?.id || isPremium) return;
     checkCourseAccess.mutate(user.id, {
       onSuccess: (result) => {
+        console.log("Réponse RPC Accès:", result);
         if (!result.allowed) {
           setAccessDenied(true);
           setLimitModalOpen(true);
         }
       },
+      onError: (err) => {
+        console.error("Erreur RPC:", err);
+      }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, premiumLoading, isPremium]);
+  }, [user?.id, premiumLoading, isPremium, checkCourseAccess]);
 
   const lessonRecord = (lesson as Record<string, unknown>) || {};
   const title = pickString(lessonRecord, "titre", "title") || "Leçon";
