@@ -194,22 +194,14 @@ export const useStartCheckout = () => {
  * Backed by la fonction RPC `increment_ai_question` qui auto-reset chaque jour.
  */
 export const useIncrementAIQuestion = () => {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.rpc("increment_ai_question", {
-        uid: userId,
+      const { data, error } = await supabase.rpc("check_and_record_usage", {
+        p_user_id: userId,
+        p_type: "bot",
       });
       if (error) throw new Error(error.message);
-      const row = Array.isArray(data) ? data[0] : data;
-      return row as {
-        free_bot_questions_today: number;
-        last_activity_date: string;
-        allowed: boolean;
-      };
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profile"] });
+      return data as { allowed: boolean; count: number };
     },
   });
 };
