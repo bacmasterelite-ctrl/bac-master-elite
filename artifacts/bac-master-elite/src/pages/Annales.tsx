@@ -1,10 +1,11 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ScrollText, Download, ArrowRight, Calendar, Crown, Lock } from "lucide-react";
 import { Link } from "wouter";
 import jsPDF from "jspdf";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { useAnnals, usePremiumStatus } from "@/lib/queries";
+import { useAnnals, usePremiumStatus, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,20 +15,9 @@ type DisplayAnnal = {
   annee: number;
   duree: string;
   session: string;
-  sujet: string;
-  corrige: string;
+  sujet_contenu: string;
+  corrige_contenu: string;
 };
-
-const fallback: DisplayAnnal[] = [
-  { matiere: "Mathématiques", serie: "D", annee: 2024, duree: "4h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "Philosophie", serie: "A", annee: 2024, duree: "4h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "Sciences Physiques", serie: "C", annee: 2024, duree: "3h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "Français", serie: "A/C/D", annee: 2023, duree: "3h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "SVT", serie: "D", annee: 2023, duree: "3h", session: "Septembre", sujet: "", corrige: "" },
-  { matiere: "Histoire-Géo", serie: "A", annee: 2023, duree: "3h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "Anglais", serie: "A/C/D", annee: 2022, duree: "3h", session: "Juin", sujet: "", corrige: "" },
-  { matiere: "Mathématiques", serie: "C", annee: 2022, duree: "4h", session: "Juin", sujet: "", corrige: "" },
-];
 
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) {
@@ -45,6 +35,19 @@ function slug(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "")
     .slice(0, 60);
+}
+
+// Matières autorisées par série
+const MATIERES_PAR_SERIE: Record<string, string[]> = {
+  A: ["anglais", "philosophie", "français", "histoire", "géographie", "francais", "histoire-geo", "histoire geo"],
+  C: ["anglais", "philosophie", "français", "histoire", "géographie", "francais", "histoire-geo", "histoire geo", "mathématiques", "mathematiques", "maths", "physique", "chimie", "sciences physiques", "svt"],
+  D: ["anglais", "philosophie", "français", "histoire", "géographie", "francais", "histoire-geo", "histoire geo", "mathématiques", "mathematiques", "maths", "physique", "chimie", "sciences physiques", "svt"],
+};
+
+function isAllowedForSerie(matiere: string, serie: string): boolean {
+  const allowed = MATIERES_PAR_SERIE[serie] ?? MATIERES_PAR_SERIE["D"];
+  const m = matiere.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return allowed.some((a) => m.includes(a.normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
 }
 
 function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
@@ -82,31 +85,45 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   doc.setFontSize(11);
   doc.setTextColor(31, 41, 55);
 
-  const body = (kind === "sujet" ? a.sujet : a.corrige).trim() ||
+  const body = (kind === "sujet" ? a.sujet_contenu : a.corrige_contenu).trim() ||
     (kind === "sujet"
-      ? "Le sujet officiel sera intégré prochainement. Vous pouvez nous écrire pour le recevoir par email."
-      : "Le corrigé détaillé sera publié prochainement.");
-  const lines = doc.splitTextToSize(body, usableWidth);
+      ? "Le sujet officiel sera intégré prochainement."
+      : "Le corrigé sera publié prochainement.");
+
   const lineHeight = 16;
-  for (const line of lines) {
-    if (cursorY + lineHeight > pageHeight - margin) {
-      doc.addPage();
-      cursorY = margin;
+  const paragraphs = body.split("\n");
+  for (const para of paragraphs) {
+    if (!para.trim()) { cursorY += 8; continue; }
+    const isTitre = para.startsWith("##") || para.startsWith("EXERCICE") || para.startsWith("PROBLÈME") || para.startsWith("PARTIE");
+    if (isTitre) {
+      cursorY += 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(249, 115, 22);
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(31, 41, 55);
     }
-    doc.text(line, margin, cursorY);
-    cursorY += lineHeight;
+    const cleaned = para.replace(/^#+\s*/, "").replace(/\*\*/g, "");
+    const lines = doc.splitTextToSize(cleaned, usableWidth);
+    for (const line of lines) {
+      if (cursorY + lineHeight > pageHeight - margin) { doc.addPage(); cursorY = margin; }
+      doc.text(line, margin, cursorY);
+      cursorY += lineHeight;
+    }
+    if (isTitre) cursorY += 4;
   }
 
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(9);
-  doc.setTextColor(107, 114, 128);
   const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p += 1) {
+  for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
     doc.text(
-      `BAC MASTER ELITE — Annale ${a.matiere} ${a.annee} — Page ${p}/${totalPages}`,
-      margin,
-      pageHeight - 24,
+      `BAC MASTER ELITE — ${kind === "sujet" ? "Sujet" : "Corrigé"} ${a.matiere} ${a.annee} — Page ${p}/${totalPages}`,
+      margin, pageHeight - 24
     );
   }
 
@@ -115,25 +132,30 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
 
 export default function Annales() {
   const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const { isPremium, isLoading: premiumLoading } = usePremiumStatus(user?.id);
   const { data: annals = [], isLoading } = useAnnals();
   const { toast } = useToast();
 
-  const items: DisplayAnnal[] =
-    annals.length > 0
-      ? annals.map((a) => {
-          const r = a as Record<string, unknown>;
-          return {
-            matiere: pickString(r, "subject", "matiere") || "Matière",
-            serie: pickString(r, "serie") || "A/C/D",
-            annee: (r.year as number) ?? (r.annee as number) ?? 2024,
-            duree: pickString(r, "duration", "duree") || "3h",
-            session: pickString(r, "session") || "Juin",
-            sujet: pickString(r, "sujet", "subject_text", "enonce", "statement"),
-            corrige: pickString(r, "corrige", "correction", "solution", "answer"),
-          };
-        })
-      : fallback;
+  const userSerie = profile?.serie ?? "D";
+
+  const items = useMemo<DisplayAnnal[]>(() => {
+    if (annals.length === 0) return [];
+    return annals
+      .map((a) => {
+        const r = a as Record<string, unknown>;
+        return {
+          matiere: pickString(r, "matiere", "subject") || "Matière",
+          serie: pickString(r, "serie") || "A/C/D",
+          annee: (r.year as number) ?? (r.annee as number) ?? 2024,
+          duree: pickString(r, "duree", "duration") || "3h",
+          session: pickString(r, "session") || "Juin",
+          sujet_contenu: pickString(r, "sujet_contenu", "sujet", "subject_text"),
+          corrige_contenu: pickString(r, "corrige_contenu", "corrige", "correction"),
+        };
+      })
+      .filter((a) => isAllowedForSerie(a.matiere, userSerie));
+  }, [annals, userSerie]);
 
   const handleDownload = (a: DisplayAnnal, kind: "sujet" | "corrige") => {
     if (!isPremium) return;
@@ -156,7 +178,7 @@ export default function Annales() {
           <p className="text-sm font-semibold uppercase tracking-wider text-amber-600">Examens officiels</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Annales du BAC</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tous les sujets officiels avec corrections détaillées rédigées par des professeurs.
+            Sujets officiels avec corrections détaillées — Série {userSerie}
           </p>
         </div>
 
@@ -169,12 +191,12 @@ export default function Annales() {
               <div>
                 <p className="text-sm font-bold text-amber-900">Annales réservées aux membres Premium</p>
                 <p className="text-xs text-amber-900/80">
-                  Téléchargez les sujets officiels et leurs corrigés détaillés en PDF, accessibles hors ligne.
+                  Téléchargez les sujets officiels et leurs corrigés détaillés en PDF.
                 </p>
               </div>
             </div>
             <Link href="/dashboard/upgrade">
-              <Button className="rounded-full bg-amber-500 text-white hover:bg-amber-600" data-testid="button-annales-upgrade">
+              <Button className="rounded-full bg-amber-500 text-white hover:bg-amber-600">
                 Devenir Premium
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Button>
@@ -188,6 +210,10 @@ export default function Annales() {
               <div key={i} className="h-40 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+            Aucune annale disponible pour votre série ({userSerie}) pour le moment.
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((a, i) => (
@@ -197,7 +223,6 @@ export default function Annales() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 className="rounded-2xl border border-border bg-card p-5 shadow-sm hover-elevate"
-                data-testid={`card-annal-${i}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
@@ -220,7 +245,6 @@ export default function Annales() {
                         variant="outline"
                         className="flex-1"
                         onClick={() => handleDownload(a, "sujet")}
-                        data-testid={`button-annal-sujet-${i}`}
                       >
                         <Download className="mr-1.5 h-3.5 w-3.5" />
                         Sujet
@@ -229,7 +253,6 @@ export default function Annales() {
                         size="sm"
                         className="flex-1 bg-hero-gradient text-white hover:opacity-90"
                         onClick={() => handleDownload(a, "corrige")}
-                        data-testid={`button-annal-corrige-${i}`}
                       >
                         <Download className="mr-1.5 h-3.5 w-3.5" />
                         Corrigé
@@ -241,8 +264,6 @@ export default function Annales() {
                         size="sm"
                         variant="outline"
                         className="w-full border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
-                        disabled={premiumLoading}
-                        data-testid={`button-annal-locked-${i}`}
                       >
                         <Lock className="mr-1.5 h-3.5 w-3.5" />
                         Réservé Premium
