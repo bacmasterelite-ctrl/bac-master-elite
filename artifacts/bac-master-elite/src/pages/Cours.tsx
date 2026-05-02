@@ -37,7 +37,7 @@ export default function Cours() {
       );
 
       // Filtre par matière sélectionnée depuis le dashboard
-      const matchesSubject = !selectedSubject || matiere === selectedSubject.toLowerCase();
+      const matchesSubject = !selectedSubject || matiere.includes(selectedSubject.toLowerCase()) || selectedSubject.toLowerCase().includes(matiere);
 
       // Filtre par recherche texte
       const matchesText = titre.includes(query.toLowerCase());
