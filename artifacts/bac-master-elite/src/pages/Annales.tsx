@@ -57,26 +57,26 @@ function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   const marginLeft = 72;
   const marginRight = 72;
   const usableWidth = pageWidth - marginLeft - marginRight;
-  const margin = marginLeft;
-  let cursorY = 72;
+  const centerX = pageWidth / 2;
+  let cursorY = 60;
 
+  // En-tête centré
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(217, 119, 6);
-  doc.text(`${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC ${a.serie}`, margin, cursorY);
+  doc.text(`${kind === "sujet" ? "SUJET" : "CORRIGÉ"} — BAC SÉRIE ${a.serie}`, centerX, cursorY, { align: "center" });
   cursorY += 22;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(22);
   doc.setTextColor(17, 24, 39);
-  const titleLines = doc.splitTextToSize(a.matiere, usableWidth);
-  doc.text(titleLines, margin, cursorY);
-  cursorY += titleLines.length * 24 + 8;
+  doc.text(a.matiere.toUpperCase(), centerX, cursorY, { align: "center" });
+  cursorY += 28;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
-  doc.text(`Session ${a.session} ${a.annee} — Durée ${a.duree}`, margin, cursorY);
+  doc.text(`Session ${a.session} ${a.annee}  •  Durée : ${a.duree}  •  Coefficient : 4`, centerX, cursorY, { align: "center" });
   cursorY += 18;
 
   doc.setDrawColor(229, 231, 235);
