@@ -52,10 +52,12 @@ function isAllowedForSerie(matiere: string, serie: string): boolean {
 
 function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const margin = 48;
+  const marginLeft = 60;
+  const marginRight = 60;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const usableWidth = pageWidth - margin * 2;
+  const usableWidth = pageWidth - marginLeft - marginRight;
+  const margin = marginLeft;
   let cursorY = margin;
 
   doc.setFont("helvetica", "bold");
