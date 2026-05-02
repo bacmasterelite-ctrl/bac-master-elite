@@ -55,7 +55,7 @@ const series = [
     titre: "Série D — Sciences",
     color: "from-emerald-500 to-teal-500",
     icon: Beaker,
-    matieres: ["SVT", "Physique-Chimie", "Mathématiques", "Philosophie", "Anglais"],
+    matieres: ["SVT", "Mathématiques", "Philosophie", "Anglais"],
     desc: "Préparez votre orientation médicale, biologique ou scientifique avec un programme complet.",
   },
 ];
