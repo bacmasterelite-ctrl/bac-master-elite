@@ -59,7 +59,7 @@ export default function Lecon() {
   useEffect(() => {
     if (!user?.id || !lessonId) return;
     
-    checkCourseAccess.mutate(user.id, {
+    checkCourseAccess.mutate({ userId: user.id, type: "lesson" }, {
       onSuccess: (result) => {
         if (result.allowed === false) {
           setAccessDenied(true);
