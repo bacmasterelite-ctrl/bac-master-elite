@@ -1,8 +1,5 @@
-/// <reference types="node" />
-import { Router, type IRouter, type Request, type Response } from "express";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-
-const router: IRouter = Router();
 
 type Plan = "mensuel" | "annuel";
 
@@ -11,7 +8,11 @@ const PLAN_PRICES: Record<Plan, number> = {
   annuel: 10499,
 };
 
-router.post("/create-payment", async (req: Request, res: Response) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   const payload = (req.body ?? {}) as { plan?: Plan };
   const plan = payload.plan;
   if (plan !== "mensuel" && plan !== "annuel") {
@@ -23,12 +24,10 @@ router.post("/create-payment", async (req: Request, res: Response) => {
   const geniusPublicKey = process.env["GENIUSPAY_PUBLIC_KEY"];
   const geniusSecretKey = process.env["GENIUSPAY_SECRET_KEY"];
   if (!geniusPublicKey || !geniusSecretKey) {
-    return res
-      .status(500)
-      .json({ error: "Config GeniusPay manquante." });
+    return res.status(500).json({ error: "Config GeniusPay manquante." });
   }
 
-  const authHeader = req.headers.authorization ?? "";
+  const authHeader = (req.headers.authorization as string) ?? "";
   const token = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
     : "";
@@ -37,9 +36,7 @@ router.post("/create-payment", async (req: Request, res: Response) => {
   const supabaseUrl = process.env["SUPABASE_URL"];
   const supabaseAnonKey = process.env["SUPABASE_ANON_KEY"];
   if (!supabaseUrl || !supabaseAnonKey) {
-    return res
-      .status(500)
-      .json({ error: "Config Supabase manquante." });
+    return res.status(500).json({ error: "Config Supabase manquante." });
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -47,10 +44,7 @@ router.post("/create-payment", async (req: Request, res: Response) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser(token);
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) {
     return res.status(401).json({ error: "Session invalide." });
   }
@@ -65,27 +59,20 @@ router.post("/create-payment", async (req: Request, res: Response) => {
     success_url: `${appUrl}/success`,
     error_url: `${appUrl}/dashboard/upgrade`,
     webhook_url: webhookUrl || undefined,
-    metadata: {
-      user_id: user.id,
-      plan,
-      expected_amount: amount,
-    },
+    metadata: { user_id: user.id, plan, expected_amount: amount },
   };
 
-  let providerRes: Response | globalThis.Response;
+  let providerRes: globalThis.Response;
   try {
-    providerRes = await fetch(
-      "https://pay.genius.ci/api/v1/merchant/payments",
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "X-API-Key": geniusPublicKey,
-          "X-API-Secret": geniusSecretKey,
-        },
-        body: JSON.stringify(body),
+    providerRes = await fetch("https://pay.genius.ci/api/v1/merchant/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "X-API-Key": geniusPublicKey,
+        "X-API-Secret": geniusSecretKey,
       },
-    );
+      body: JSON.stringify(body),
+    });
   } catch (err) {
     return res.status(502).json({
       error: "GeniusPay injoignable.",
@@ -93,26 +80,16 @@ router.post("/create-payment", async (req: Request, res: Response) => {
     });
   }
 
-  const text = await (providerRes as globalThis.Response).text();
+  const text = await providerRes.text();
   let providerJson: Record<string, unknown> = {};
-  try {
-    providerJson = text ? JSON.parse(text) : {};
-  } catch { /* ignore */ }
+  try { providerJson = text ? JSON.parse(text) : {}; } catch { /* ignore */ }
 
-  if (!(providerRes as globalThis.Response).ok) {
-    console.error("GENIUSPAY_ERROR", {
-        status: (providerRes as globalThis.Response).status,
-        body: providerJson || text,
+  if (!providerRes.ok) {
+    return res.status(providerRes.status).json({
+      error: "GeniusPay a refusé la transaction.",
+      detail: providerJson || text,
     });
-    return res
-      .status((providerRes as globalThis.Response).status)
-      .json({
-        error: "GeniusPay a refusé la transaction.",
-        detail: providerJson || text,
-      });
   }
-
-  console.log("GENIUSPAY_SUCCESS", { providerJson });
 
   const checkoutUrl =
     (providerJson as { data?: { checkout_url?: string; payment_url?: string } })
@@ -121,12 +98,8 @@ router.post("/create-payment", async (req: Request, res: Response) => {
       ?.data?.payment_url;
 
   if (!checkoutUrl) {
-    return res
-      .status(502)
-      .json({ error: "URL de paiement manquante.", detail: providerJson });
+    return res.status(502).json({ error: "URL de paiement manquante.", detail: providerJson });
   }
 
   return res.status(200).json({ checkout_url: checkoutUrl, plan, amount });
-});
-
-export default router;
+}
