@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://bac-master-elite.com/sitemap.xml
