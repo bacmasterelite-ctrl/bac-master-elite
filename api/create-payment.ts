@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 
