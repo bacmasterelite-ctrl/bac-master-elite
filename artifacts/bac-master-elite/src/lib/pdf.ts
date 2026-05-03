@@ -125,3 +125,9 @@ function defaultBody(course: PdfCourse): string {
     "Connectez-vous à votre tableau de bord BAC MASTER ELITE pour accéder à la version interactive, aux exercices corrigés et aux annales.",
   ].join("\n");
 }
+
+/** Détecte si on est dans le WebView Facebook/Instagram */
+export function isInAppBrowser(): boolean {
+  const ua = navigator.userAgent || "";
+  return /FBAN|FBAV|Instagram|FB_IAB|FBIOS/.test(ua);
+}

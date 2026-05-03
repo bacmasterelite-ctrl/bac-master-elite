@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ScrollText, Download, ArrowRight, Calendar, Crown, Lock } from "lucide-react";
 import { Link } from "wouter";
 import jsPDF from "jspdf";
+import { isInAppBrowser } from "@/lib/pdf";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useAnnals, usePremiumStatus, useProfile } from "@/lib/queries";
@@ -161,6 +162,10 @@ export default function Annales() {
 
   const handleDownload = (a: DisplayAnnal, kind: "sujet" | "corrige") => {
     if (!isPremium) return;
+    if (isInAppBrowser()) {
+      toast({ title: "Ouvre dans ton navigateur", description: "Appuie sur les 3 points en haut puis \"Ouvrir dans le navigateur\" pour télécharger le PDF.", variant: "default" });
+      return;
+    }
     try {
       buildAnnalPdf(a, kind);
     } catch (err) {
