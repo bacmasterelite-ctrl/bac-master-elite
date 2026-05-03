@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,27 +8,27 @@ import {
   SupabaseAuthProvider,
   useAuth,
 } from "@/contexts/SupabaseAuthProvider";
-import Landing from "@/pages/Landing";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
-import Dashboard from "@/pages/Dashboard";
-import Cours from "@/pages/Cours";
-import Lecon from "@/pages/Lecon";
-import Exercices from "@/pages/Exercices";
-import Exercice from "@/pages/Exercice";
-import Annales from "@/pages/Annales";
-import TuteurIA from "@/pages/TuteurIA";
-import Methodologie from "@/pages/Methodologie";
-import AstucesBAC from "@/pages/AstucesBAC";
-import Upgrade from "@/pages/Upgrade";
-import Profile from "@/pages/Profile";
-import Leaderboard from "@/pages/Leaderboard";
-import Admin from "@/pages/Admin";
-import Success from "@/pages/Success";
-import ResetPassword from "@/pages/ResetPassword";
+const Landing = lazy(() => import("@/pages/Landing"));
+const Login = lazy(() => import("@/pages/Login"));
+const Signup = lazy(() => import("@/pages/Signup"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Cours = lazy(() => import("@/pages/Cours"));
+const Lecon = lazy(() => import("@/pages/Lecon"));
+const Exercices = lazy(() => import("@/pages/Exercices"));
+const Exercice = lazy(() => import("@/pages/Exercice"));
+const Annales = lazy(() => import("@/pages/Annales"));
+const TuteurIA = lazy(() => import("@/pages/TuteurIA"));
+const Methodologie = lazy(() => import("@/pages/Methodologie"));
+const AstucesBAC = lazy(() => import("@/pages/AstucesBAC"));
+const Upgrade = lazy(() => import("@/pages/Upgrade"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const Success = lazy(() => import("@/pages/Success"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 import NotFound from "@/pages/not-found";
-import Quiz from "@/pages/Quiz";
-import Parrainage from "@/pages/Parrainage";
+const Quiz = lazy(() => import("@/pages/Quiz"));
+const Parrainage = lazy(() => import("@/pages/Parrainage"));
 import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
@@ -64,7 +65,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <Switch>
+    <Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin" /></div>}><Switch>
       <Route path="/">
         <PublicOnlyRoute>
           <Landing />
@@ -166,7 +167,7 @@ function AppRoutes() {
       </Route>
 
       <Route component={NotFound} />
-    </Switch>
+    </Switch></Suspense>
   );
 }
 
