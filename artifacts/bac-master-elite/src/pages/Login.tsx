@@ -68,7 +68,18 @@ export default function Login() {
     const { error } = await signIn(email, password);
     setSubmitting(false);
     if (error) {
-      toast({ title: "Connexion échouée", description: error, variant: "destructive" });
+      const msg = typeof error === "string" ? error.toLowerCase() : "";
+      const isEmailErr =
+        msg.includes("invalid login") ||
+        msg.includes("user not found") ||
+        msg.includes("email");
+      toast({
+        title: isEmailErr ? "Email incorrect" : "Mot de passe incorrect",
+        description: isEmailErr
+          ? "Aucun compte trouvé pour cet email."
+          : "Le mot de passe saisi est incorrect.",
+        variant: "destructive",
+      });
       return;
     }
     toast({ title: "Bienvenue !", description: "Connexion réussie." });
