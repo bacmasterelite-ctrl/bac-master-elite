@@ -39,6 +39,8 @@ import {
   type Annal,
 } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { supabase } from "@/lib/supabase";
+import { useState, useEffect } from "react";
 import { styleForSubject, subjectsForSerie } from "@/lib/subjects";
 
 const fadeUp = {
@@ -66,6 +68,43 @@ export default function Dashboard() {
   const { data: annalsRaw = [] } = useAnnals();
 
   const serie = (profile?.serie ?? "D").toUpperCase();
+
+  // Vraies données utilisateur
+  const [coursCount, setCoursCount] = useState(0);
+  const [exercicesCount, setExercicesCount] = useState(0);
+  const [weeklyProgress, setWeeklyProgress] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Cours suivis (progress > 0)
+    supabase
+      .from("lesson_progress")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gt("progress", 0)
+      .then(({ count }) => setCoursCount(count ?? 0));
+    // Exercices complétés
+    supabase
+      .from("user_exercise_progress")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("completed", true)
+      .then(({ count }) => setExercicesCount(count ?? 0));
+    // Score moyen exercices cette semaine
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    supabase
+      .from("user_exercise_progress")
+      .select("score")
+      .eq("user_id", user.id)
+      .gte("completed_at", weekAgo.toISOString())
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const avg = data.reduce((a, b) => a + (b.score ?? 0), 0) / data.length;
+          setWeeklyProgress(Math.round(avg));
+        }
+      });
+  }, [user?.id]);
   const allowedSubjects = subjectsForSerie(serie);
 
   const lessons = lessonsRaw.filter((l) => matchesSerie(l as Record<string, unknown>, serie) && matchesSubjectAllowed(l as Record<string, unknown>, allowedSubjects));
@@ -97,40 +136,40 @@ export default function Dashboard() {
   const stats = [
     {
       label: "Cours suivis",
-      value: lessons.length || 12,
-      total: lessons.length ? null : 50,
+      value: coursCount,
+      total: lessons.length || null,
       icon: BookOpen,
       color: "from-blue-600 to-blue-500",
-      delta: "+3 cette semaine",
+      delta: coursCount > 0 ? `${coursCount} cours commencés` : null,
     },
     {
       label: "Exercices résolus",
-      value: exercises.length || 47,
-      total: exercises.length ? null : 200,
+      value: exercicesCount,
+      total: exercises.length || null,
       icon: PenLine,
       color: "from-emerald-600 to-emerald-500",
-      delta: "+12 cette semaine",
+      delta: exercicesCount > 0 ? `${exercicesCount} complétés` : null,
     },
     {
       label: "Annales travaillées",
-      value: annals.length || 8,
-      total: annals.length ? null : 30,
+      value: 0,
+      total: annals.length || null,
       icon: Trophy,
       color: "from-amber-500 to-orange-500",
-      delta: "+2 cette semaine",
+      delta: null,
     },
     {
       label: "Score moyen",
-      value: 78,
+      value: weeklyProgress,
       suffix: "%",
       icon: Target,
       color: "from-violet-600 to-fuchsia-500",
-      delta: "+6 pts ce mois",
+      delta: weeklyProgress > 0 ? `${weeklyProgress}% cette semaine` : null,
     },
   ];
 
-  const goal = 100;
-  const done = 78;
+  const goal = Math.max(exercises.length, 10);
+  const done = exercicesCount;
 
   return (
     <DashboardLayout>
@@ -230,10 +269,12 @@ export default function Dashboard() {
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${s.color} text-white shadow-md`}>
                   <s.icon className="h-5 w-5" />
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                  <ArrowUp className="h-3 w-3" />
-                  {s.delta}
-                </span>
+                {s.delta && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                    <ArrowUp className="h-3 w-3" />
+                    {s.delta}
+                  </span>
+                )}
               </div>
               <p className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">{s.label}</p>
               <p className="mt-1 text-3xl font-extrabold">

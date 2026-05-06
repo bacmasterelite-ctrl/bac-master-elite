@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -51,11 +52,20 @@ export default function Signup() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [serie, setSerie] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({
+        title: "Mots de passe différents",
+        description: "Les deux mots de passe ne correspondent pas.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!serie) {
       toast({
         title: "Choisissez votre série",
@@ -146,6 +156,25 @@ export default function Signup() {
                   className="pl-9"
                   data-testid="input-password"
                 />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Répétez votre mot de passe"
+                  className={cn("pl-9", confirmPassword && password !== confirmPassword ? "border-rose-500 focus-visible:ring-rose-500" : "")}
+                  data-testid="input-confirm-password"
+                />
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="mt-1 text-xs text-rose-500">Les mots de passe ne correspondent pas.</p>
+                )}
               </div>
             </div>
 
