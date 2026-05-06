@@ -30,7 +30,7 @@ Règles de mise en forme (TRÈS IMPORTANT) :
 - N'utilise PAS de tableaux complexes ni de LaTeX brut ($...$) — préfère du texte simple.
 - Sépare les sections par une ligne vide pour une lecture aérée.`;
 
-const MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const MODEL_CHAIN = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
 
 export type ImageInput = {
   base64: string;
@@ -120,7 +120,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
         const model = client.getGenerativeModel({
           model: modelName,
           systemInstruction: SYSTEM_PROMPT,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
         });
         const result = await model.generateContent(parts);
         const text = result.response.text();
