@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
+const openrouterKey = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
 
 const SYSTEM_PROMPT = `Tu es le Tuteur IA de BAC MASTER ELITE, un **professeur ivoirien expert** qui prépare les élèves au BAC (séries A, C, D) en Côte d'Ivoire et en Afrique francophone.
 
@@ -28,24 +30,16 @@ Règles de mise en forme (TRÈS IMPORTANT) :
 - N'utilise PAS de tableaux complexes ni de LaTeX brut ($...$) — préfère du texte simple.
 - Sépare les sections par une ligne vide pour une lecture aérée.`;
 
-// Models tried in order — all support vision (multimodal)
 const MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 
 export type ImageInput = {
-  /** Raw base64 (no data URL prefix) */
   base64: string;
-  /** e.g. "image/png", "image/jpeg" */
   mimeType: string;
 };
 
 let cachedClient: GoogleGenerativeAI | null = null;
 function getClient() {
   if (!apiKey) {
-    console.error(
-      "[Tuteur IA] VITE_GEMINI_API_KEY est ABSENTE du bundle. " +
-        "Ajoutez VITE_GEMINI_API_KEY dans les Secrets de votre projet, " +
-        "puis relancez l'application (les variables Vite sont injectées au build, pas au runtime).",
-    );
     throw new Error(
       "Clé API Gemini manquante. Ajoutez VITE_GEMINI_API_KEY dans les variables d'environnement, puis relancez l'application.",
     );
@@ -54,72 +48,131 @@ function getClient() {
   return cachedClient;
 }
 
-export async function getAIResponse(prompt: string, image?: ImageInput): Promise<string> {
-  const client = getClient();
-  let lastError: unknown = null;
-
-  const parts: Part[] = [];
-  if (image) {
-    parts.push({
-      inlineData: {
-        data: image.base64,
-        mimeType: image.mimeType,
-      },
-    });
+async function getGroqResponse(prompt: string): Promise<string> {
+  if (!groqKey) throw new Error("Clé Groq absente");
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${groqKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama3-8b-8192",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq ${res.status}: ${err}`);
   }
-  parts.push({ text: prompt });
+  const data = await res.json();
+  const text: string = data.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) throw new Error("Réponse vide de Groq");
+  return text.trim();
+}
 
-  for (const modelName of MODEL_CHAIN) {
-    try {
-      const model = client.getGenerativeModel({
-        model: modelName,
-        systemInstruction: SYSTEM_PROMPT,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-        },
-      });
-      const result = await model.generateContent(parts);
-      const text = result.response.text();
-      if (text && text.trim().length > 0) return text.trim();
-      throw new Error("Réponse vide du modèle");
-    } catch (err) {
-      lastError = err;
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[Tuteur IA] Échec du modèle "${modelName}" :`,
-        { message, hasImage: !!image, promptLen: prompt.length, raw: err },
-      );
-      if (!/not.?found|404|unavailable|deprecated|model/i.test(message)) {
-        throw new Error(humanizeError(message));
+async function getOpenRouterResponse(prompt: string): Promise<string> {
+  if (!openrouterKey) throw new Error("Clé OpenRouter absente");
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openrouterKey}`,
+      "HTTP-Referer": "https://bacmasterelite.vercel.app",
+      "X-Title": "BAC Master Elite",
+    },
+    body: JSON.stringify({
+      model: "mistralai/mistral-7b-instruct:free",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  const text: string = data.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) throw new Error("Réponse vide d'OpenRouter");
+  return text.trim();
+}
+
+export async function getAIResponse(prompt: string, image?: ImageInput): Promise<string> {
+  if (apiKey) {
+    const client = getClient();
+    const parts: Part[] = [];
+    if (image) {
+      parts.push({ inlineData: { data: image.base64, mimeType: image.mimeType } });
+    }
+    parts.push({ text: prompt });
+
+    for (const modelName of MODEL_CHAIN) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_PROMPT,
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        });
+        const result = await model.generateContent(parts);
+        const text = result.response.text();
+        if (text && text.trim().length > 0) return text.trim();
+        throw new Error("Réponse vide du modèle");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[Tuteur IA] Échec "${modelName}" :`, message);
+        if (!/not.?found|404|unavailable|deprecated|model/i.test(message)) {
+          console.warn("[Tuteur IA] Erreur non-modèle, bascule vers fallback…");
+          break;
+        }
+        if (/quota|rate|429/i.test(message)) {
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+        console.warn("[Tuteur IA] Bascule vers le modèle suivant…");
       }
-      if (/quota|rate|429/i.test(message)) { await new Promise(r => setTimeout(r, 3000)); } console.warn(`[Tuteur IA] Bascule vers le modèle suivant…`);
+    }
+    console.warn("[Tuteur IA] Tous les modèles Gemini ont échoué.");
+  }
+
+  const promptTextOnly = image
+    ? `[Note : l'élève a joint une image mais elle ne peut pas être analysée en ce moment. Réponds uniquement sur la base du texte suivant.]\n\n${prompt}`
+    : prompt;
+
+  if (groqKey) {
+    try {
+      console.warn("[Tuteur IA] Bascule vers Groq…");
+      const reply = await getGroqResponse(promptTextOnly);
+      console.log("[Tuteur IA] ✅ Réponse via Groq");
+      return reply;
+    } catch (err) {
+      console.error("[Tuteur IA] Groq a aussi échoué :", err);
     }
   }
 
-  console.error("[Tuteur IA] Tous les modèles Gemini ont échoué.", lastError);
-  throw new Error(humanizeError(lastError instanceof Error ? lastError.message : "Erreur inconnue"));
+  if (openrouterKey) {
+    try {
+      console.warn("[Tuteur IA] Bascule vers OpenRouter…");
+      const reply = await getOpenRouterResponse(promptTextOnly);
+      console.log("[Tuteur IA] ✅ Réponse via OpenRouter");
+      return reply;
+    } catch (err) {
+      console.error("[Tuteur IA] OpenRouter a aussi échoué :", err);
+    }
+  }
+
+  throw new Error("Le tuteur est temporairement indisponible. Réessayez dans quelques instants.");
 }
 
-function humanizeError(raw: string): string {
-  if (/api.?key|API_KEY_INVALID|permission/i.test(raw)) {
-    return "Clé API Gemini invalide ou expirée. Vérifiez VITE_GEMINI_API_KEY.";
-  }
-  if (/quota|rate|429/i.test(raw)) {
-    return "Limite Gemini atteinte. Patientez quelques secondes puis réessayez.";
-  }
-  if (/network|fetch|failed to fetch/i.test(raw)) {
-    return "Connexion à Gemini impossible. Vérifiez votre connexion internet.";
-  }
-  if (/image|inline.?data|mime/i.test(raw)) {
-    return "Image non supportée. Utilisez un format JPG, PNG ou WebP de moins de 4 Mo.";
-  }
-  return `Erreur Gemini : ${raw}`;
-}
+export const isGeminiConfigured = () => !!apiKey || !!groqKey || !!openrouterKey;
 
-export const isGeminiConfigured = () => !!apiKey;
-
-/** Convert a File to base64 (without the `data:...;base64,` prefix). */
 export function fileToBase64(file: File): Promise<{ base64: string; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
