@@ -7,6 +7,7 @@ import { Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { supabase } from "@/lib/supabase";
 import { subjectsForSerie } from "@/lib/subjects";
 
 export default function Cours() {
@@ -71,7 +72,7 @@ export default function Cours() {
                   {lesson.matiere ?? lesson.subject ?? "—"}
                 </div>
                 <h3 className="font-bold mb-3">{lesson.titre ?? lesson.title ?? "Sans titre"}</h3>
-                <Link href={`/dashboard/lecon/${lesson.id}`}>
+                <Link href={`/dashboard/lecon/${lesson.id}`} onClick={() => { if (user?.id) { supabase.from("profiles").update({ last_course_viewed_at: new Date().toISOString() }).eq("id", user.id); }}}>
                   <Button className="w-full justify-between">
                     Commencer <ChevronRight className="h-4 w-4" />
                   </Button>
