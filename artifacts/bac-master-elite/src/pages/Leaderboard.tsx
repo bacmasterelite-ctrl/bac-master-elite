@@ -23,6 +23,15 @@ const initials = (name?: string | null, email?: string | null) => {
   return email?.[0]?.toUpperCase() ?? "?";
 };
 
+const maskName = (name?: string | null): string => {
+  if (!name) return "***";
+  const parts = name.trim().split(" ");
+  return parts.map((part, i) => {
+    if (i === 0) return part[0] + "*".repeat(Math.max(part.length - 1, 2));
+    return part[0] + "*".repeat(Math.max(part.length - 1, 2));
+  }).join(" ");
+};
+
 const rankIcon = (rank: number) => {
   if (rank === 1) return { icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-100 dark:bg-yellow-900/40" };
   if (rank === 2) return { icon: Medal, color: "text-slate-400", bg: "bg-slate-100 dark:bg-slate-800" };
@@ -84,7 +93,7 @@ export default function Leaderboard() {
                   <div className="mt-3 flex h-16 w-16 items-center justify-center rounded-full bg-hero-gradient text-lg font-extrabold text-white">
                     {initials(u.full_name)}
                   </div>
-                  <p className="mt-3 text-center text-sm font-bold">{u.full_name}</p>
+                  <p className="mt-3 text-center text-sm font-bold">{maskName(u.full_name)}</p>
                   <p className="text-xs text-muted-foreground">Série {u.serie}</p>
                   <p className="mt-2 text-lg font-extrabold text-blue-600">
                     {u.points.toLocaleString("fr-FR")}{" "}
@@ -146,7 +155,7 @@ export default function Leaderboard() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold">{u.full_name}</p>
+                        <p className="truncate text-sm font-semibold">{maskName(u.full_name)}</p>
                         {isMe && (
                           <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                             Vous
