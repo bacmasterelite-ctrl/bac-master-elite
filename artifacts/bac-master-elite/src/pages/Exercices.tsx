@@ -25,13 +25,14 @@ export default function Exercices() {
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  // Tous les exercices filtrés par série
   const allItems = useMemo(() => {
     return exercises
       .filter((e) => {
         const r = e as Record<string, unknown>;
         const lessonSerie = ((r.serie as string) ?? "").toUpperCase();
-        return !lessonSerie || lessonSerie.includes(serie);
+        if (!lessonSerie) return true;
+        const seriesList = lessonSerie.split('/');
+        return seriesList.includes(serie);
       })
       .map((e) => {
         const r = e as Record<string, unknown>;
@@ -46,7 +47,6 @@ export default function Exercices() {
       });
   }, [exercises, serie]);
 
-  // Nombre d'exercices par matière
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
     allItems.forEach((ex) => {
@@ -56,7 +56,6 @@ export default function Exercices() {
     return map;
   }, [allItems]);
 
-  // Exercices de la matière active
   const filteredItems = useMemo(() => {
     if (!activeSubject) return [];
     return allItems.filter((ex) =>
@@ -65,7 +64,6 @@ export default function Exercices() {
     );
   }, [allItems, activeSubject]);
 
-  // Vue matières
   if (!activeSubject) {
     return (
       <DashboardLayout>
@@ -113,11 +111,9 @@ export default function Exercices() {
     );
   }
 
-  // Vue exercices d'une matière
   return (
     <DashboardLayout>
       <div className="space-y-6 pb-10">
-        {/* Retour */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubject(null)}

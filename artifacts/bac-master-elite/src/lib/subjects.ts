@@ -1,4 +1,3 @@
-// Color & icon mapping per subject (matière)
 import {
   Calculator,
   Atom,
@@ -131,11 +130,10 @@ export function styleForSubject(name?: string | null): SubjectStyle {
   return STYLES.math;
 }
 
-// Subjects available per série
 export const SUBJECTS_BY_SERIE: Record<string, string[]> = {
   A: ["Philosophie", "Français", "Histoire-Géo", "Anglais", "Littérature"],
   C: ["Mathématiques", "Physique", "Chimie", "SVT", "Philosophie", "Anglais"],
-  D: ["SVT", "Physique", "Chimie", "Mathématiques", "Philosophie", "Anglais"],
+  D: ["Mathématiques", "SVT", "Physique", "Chimie", "Philosophie", "Anglais"],
 };
 
 export function subjectsForSerie(serie?: string | null): string[] {
