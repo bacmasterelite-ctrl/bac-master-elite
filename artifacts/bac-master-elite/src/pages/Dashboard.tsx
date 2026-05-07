@@ -73,9 +73,23 @@ export default function Dashboard() {
   const [coursCount, setCoursCount] = useState(0);
   const [exercicesCount, setExercicesCount] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
+  const [progressData, setProgressData] = useState<{ semaine: string; score: number }[]>([
+    { semaine: "S1", score: 0 }, { semaine: "S2", score: 0 }, { semaine: "S3", score: 0 },
+    { semaine: "S4", score: 0 }, { semaine: "S5", score: 0 }, { semaine: "S6", score: 0 },
+    { semaine: "S7", score: 0 },
+  ]);
+  const [repartitionData, setRepartitionData] = useState([
+    { name: "Cours", value: 33, color: "#1e40af" },
+    { name: "Exercices", value: 34, color: "#10b981" },
+    { name: "Annales", value: 33, color: "#f59e0b" },
+  ]);
+  const [matieresData, setMatieresData] = useState<{ matiere: string; score: number }[]>([]);
 
   useEffect(() => {
     if (!user?.id) return;
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
     // Cours suivis (progress > 0)
     supabase
       .from("lesson_progress")
@@ -83,6 +97,7 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .gt("progress", 0)
       .then(({ count }) => setCoursCount(count ?? 0));
+
     // Exercices complétés
     supabase
       .from("user_exercise_progress")
@@ -90,9 +105,8 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .eq("completed", true)
       .then(({ count }) => setExercicesCount(count ?? 0));
-    // Score moyen exercices cette semaine
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    // Score moyen cette semaine
     supabase
       .from("user_exercise_progress")
       .select("score")
@@ -104,6 +118,75 @@ export default function Dashboard() {
           setWeeklyProgress(Math.round(avg));
         }
       });
+
+    // Progression hebdomadaire (7 semaines)
+    const weeks = Array.from({ length: 7 }, (_, i) => {
+      const end = new Date();
+      end.setDate(end.getDate() - i * 7);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
+      return { label: `S${7 - i}`, start: start.toISOString(), end: end.toISOString() };
+    }).reverse();
+
+    Promise.all(
+      weeks.map(({ label, start, end }) =>
+        supabase
+          .from("user_exercise_progress")
+          .select("score")
+          .eq("user_id", user.id)
+          .gte("completed_at", start)
+          .lt("completed_at", end)
+          .then(({ data }) => {
+            const avg = data && data.length > 0
+              ? Math.round(data.reduce((a, b) => a + (b.score ?? 0), 0) / data.length)
+              : 0;
+            return { semaine: label, score: avg };
+          })
+      )
+    ).then((results) => {
+      if (results.some((r) => r.score > 0)) setProgressData(results);
+    });
+
+    // Répartition du temps (cours / exercices / annales cette semaine)
+    Promise.all([
+      supabase.from("lesson_progress").select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).gte("updated_at", weekAgo.toISOString()),
+      supabase.from("user_exercise_progress").select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).gte("completed_at", weekAgo.toISOString()),
+      supabase.from("annal_progress").select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).gte("viewed_at", weekAgo.toISOString()),
+    ]).then(([cours, exos, annales]) => {
+      const total = (cours.count ?? 0) + (exos.count ?? 0) + (annales.count ?? 0);
+      if (total > 0) {
+        setRepartitionData([
+          { name: "Cours", value: Math.round(((cours.count ?? 0) / total) * 100), color: "#1e40af" },
+          { name: "Exercices", value: Math.round(((exos.count ?? 0) / total) * 100), color: "#10b981" },
+          { name: "Annales", value: Math.round(((annales.count ?? 0) / total) * 100), color: "#f59e0b" },
+        ]);
+      }
+    });
+
+    // Performance par matière
+    supabase
+      .from("user_exercise_progress")
+      .select("score, exercise_id, exercises(subject)")
+      .eq("user_id", user.id)
+      .eq("completed", true)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        const bySubject: Record<string, number[]> = {};
+        data.forEach((row) => {
+          const subj = (row.exercises as any)?.subject ?? "Autre";
+          if (!bySubject[subj]) bySubject[subj] = [];
+          bySubject[subj].push(row.score ?? 0);
+        });
+        const result = Object.entries(bySubject).slice(0, 5).map(([subj, scores]) => ({
+          matiere: subj.length > 8 ? subj.slice(0, 8) + "." : subj,
+          score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+        }));
+        setMatieresData(result);
+      });
+
   }, [user?.id]);
   const allowedSubjects = subjectsForSerie(serie);
 
@@ -111,27 +194,9 @@ export default function Dashboard() {
   const exercises = exercisesRaw.filter((e) => matchesSerie(e as Record<string, unknown>, serie) && matchesSubjectAllowed(e as Record<string, unknown>, allowedSubjects));
   const annals = annalsRaw.filter((a) => matchesSerie(a as Record<string, unknown>, serie) && matchesSubjectAllowed(a as Record<string, unknown>, allowedSubjects));
 
-  // Synthesize per-subject data (real if exists, else demo)
-  const matieresData = allowedSubjects.slice(0, 5).map((m, i) => ({
-    matiere: m.length > 8 ? m.slice(0, 8) + "." : m,
-    score: 60 + ((i * 7) % 35),
-  }));
+  // matieresData est maintenant dans le state (voir useEffect)
 
-  const progressData = [
-    { semaine: "S1", score: 42 },
-    { semaine: "S2", score: 51 },
-    { semaine: "S3", score: 58 },
-    { semaine: "S4", score: 64 },
-    { semaine: "S5", score: 71 },
-    { semaine: "S6", score: 78 },
-    { semaine: "S7", score: 84 },
-  ];
-
-  const repartitionData = [
-    { name: "Cours", value: 45, color: "#1e40af" },
-    { name: "Exercices", value: 35, color: "#10b981" },
-    { name: "Annales", value: 20, color: "#f59e0b" },
-  ];
+  // progressData et repartitionData sont maintenant dans le state (voir useEffect)
 
   const stats = [
     {

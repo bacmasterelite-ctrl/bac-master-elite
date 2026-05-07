@@ -62,23 +62,51 @@ export default function Cours() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <div className="grid gap-4">
+        <div className="space-y-8">
           {isLoading ? (
             <p className="text-center py-10 text-muted-foreground">Chargement...</p>
           ) : filtered.length > 0 ? (
-            filtered.map((lesson) => (
-              <div key={lesson.id} className="p-4 border rounded-xl bg-card shadow-sm">
-                <div className="text-xs font-bold text-primary uppercase mb-1">
-                  {lesson.matiere ?? lesson.subject ?? "—"}
+            (() => {
+              // Grouper par matière en respectant l'ordre de allowedSubjects
+              const groups: Record<string, typeof filtered> = {};
+              filtered.forEach((lesson) => {
+                const mat = lesson.matiere ?? lesson.subject ?? "Autre";
+                if (!groups[mat]) groups[mat] = [];
+                groups[mat].push(lesson);
+              });
+              // Trier les groupes selon allowedSubjects
+              const orderedKeys = [
+                ...allowedSubjects.filter((s) => groups[s]),
+                ...Object.keys(groups).filter((k) => !allowedSubjects.includes(k)),
+              ];
+              return orderedKeys.map((matiere) => (
+                <div key={matiere}>
+                  {/* Header matière */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <h2 className="text-sm font-extrabold uppercase tracking-widest text-primary">
+                      {matiere}
+                    </h2>
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground">
+                      {groups[matiere].length} leçon{groups[matiere].length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  {/* Leçons de cette matière */}
+                  <div className="grid gap-3">
+                    {groups[matiere].map((lesson) => (
+                      <div key={lesson.id} className="p-4 border rounded-xl bg-card shadow-sm">
+                        <h3 className="font-bold mb-3">{lesson.titre ?? lesson.title ?? "Sans titre"}</h3>
+                        <Link href={`/dashboard/lecon/${lesson.id}`} onClick={() => { if (user?.id) { supabase.from("profiles").update({ last_course_viewed_at: new Date().toISOString() }).eq("id", user.id); }}}>
+                          <Button className="w-full justify-between">
+                            Commencer <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="font-bold mb-3">{lesson.titre ?? lesson.title ?? "Sans titre"}</h3>
-                <Link href={`/dashboard/lecon/${lesson.id}`} onClick={() => { if (user?.id) { supabase.from("profiles").update({ last_course_viewed_at: new Date().toISOString() }).eq("id", user.id); }}}>
-                  <Button className="w-full justify-between">
-                    Commencer <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            ))
+              ));
+            })()
           ) : (
             <p className="text-center py-10 text-muted-foreground">Aucun cours trouvé.</p>
           )}
