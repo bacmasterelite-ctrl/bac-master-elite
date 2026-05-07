@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -35,6 +36,8 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const { isPremium } = usePremiumStatus(user?.id);
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const fullName = profile?.full_name ?? (user?.user_metadata?.full_name as string | undefined) ?? "Élève";
   const email = profile?.email ?? user?.email ?? "";
@@ -136,7 +139,7 @@ export default function Profile() {
                 <Settings className="mr-1.5 h-4 w-4" />
                 Paramètres
               </Button>
-              <Button variant="outline" className="rounded-full" onClick={signOut} data-testid="button-logout">
+              <Button variant="outline" className="rounded-full" onClick={() => setShowLogoutConfirm(true)} data-testid="button-logout">
                 Déconnexion
               </Button>
             </div>
@@ -195,6 +198,31 @@ export default function Profile() {
           </div>
         </motion.div>
       </div>
+      {/* Dialog confirmation déconnexion */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl border border-border">
+            <h3 className="text-lg font-bold">Se déconnecter ?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Êtes-vous sûr de vouloir vous déconnecter de BAC Master Elite ?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setShowLogoutConfirm(false); signOut(); }}
+                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
