@@ -50,7 +50,7 @@ export default function Exercices() {
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
     allItems.forEach((ex) => {
-      const mat = ex.matiere;
+      const mat = ex.subject;
       map[mat] = (map[mat] ?? 0) + 1;
     });
     return map;
@@ -59,8 +59,8 @@ export default function Exercices() {
   const filteredItems = useMemo(() => {
     if (!activeSubject) return [];
     return allItems.filter((ex) =>
-      normalize(ex.matiere).includes(normalize(activeSubject)) ||
-      normalize(activeSubject).includes(normalize(ex.matiere))
+      normalize(ex.subject).includes(normalize(activeSubject)) ||
+      normalize(activeSubject).includes(normalize(ex.subject))
     );
   }, [allItems, activeSubject]);
 
