@@ -10,6 +10,7 @@ import { useAnnals, usePremiumStatus, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
+import { supabase } from "@/lib/supabase";
 
 type DisplayAnnal = {
   matiere: string;
@@ -141,6 +142,13 @@ export default function Annales() {
 
   const handleDownload = (a: DisplayAnnal, kind: "sujet" | "corrige") => {
     if (!isPremium) return;
+    // Tracker la consultation dans annal_progress
+    if (user?.id) {
+      supabase.from("annal_progress").upsert({
+        user_id: user.id,
+        viewed_at: new Date().toISOString(),
+      }, { onConflict: "user_id,annal_id" }).then(() => {});
+    }
     if (isInAppBrowser()) {
       toast({ title: "Ouvre dans ton navigateur", description: "Appuie sur les 3 points en haut puis \"Ouvrir dans le navigateur\" pour télécharger.", variant: "default" });
       return;
