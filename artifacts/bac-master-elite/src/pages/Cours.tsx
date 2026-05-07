@@ -1,4 +1,4 @@
-import { useSearch, useLocation } from "wouter";
+import { useSearch, useLocation, useRouter } from "wouter";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -18,6 +18,7 @@ export default function Cours() {
   const [query, setQuery] = useState("");
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const search = useSearch();
+  const router = useRouter();
   const params = new URLSearchParams(search);
   const subjectFromUrl = params.get("subject");
 
@@ -114,7 +115,14 @@ export default function Cours() {
         {/* Header retour */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubject(null)}
+            onClick={() => {
+              if (subjectFromUrl) {
+                window.history.pushState({}, "", "/dashboard/cours");
+                setActiveSubject(null);
+              } else {
+                setActiveSubject(null);
+              }
+            }}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
