@@ -150,12 +150,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {isPremium && <Crown className="h-3 w-3 text-amber-400" />}
             </div>
           </div>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}}
-            className="rounded-lg p-2 text-sidebar-foreground/70 hover-elevate"
-            aria-label="Se déconnecter"
-            data-testid="button-signout"
-          >
+          <button onClick={() => setShowLogoutConfirm(true)} className="rounded-lg p-2 text-sidebar-foreground/70 hover-elevate" aria-label="Se déconnecter" data-testid="button-signout">
             <LogOut className="h-4 w-4" />
           </button>
         </Link>
