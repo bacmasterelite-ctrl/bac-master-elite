@@ -1,5 +1,5 @@
-import { useSearch, useLocation, useRouter } from "wouter";
-import { useState, useMemo } from "react";
+import { useSearch } from "wouter";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLessons, useProfile } from "@/lib/queries";
@@ -10,7 +10,6 @@ import { Link } from "wouter";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { supabase } from "@/lib/supabase";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
-import { supabase } from "@/lib/supabase";
 
 export default function Cours() {
   const { user } = useAuth();
@@ -21,14 +20,12 @@ export default function Cours() {
   const [lastLessonId, setLastLessonId] = useState<string | null>(null);
   const [lastLessonTitle, setLastLessonTitle] = useState<string | null>(null);
   const search = useSearch();
-  const router = useRouter();
   const params = new URLSearchParams(search);
   const subjectFromUrl = params.get("subject");
 
   const serie = (profile?.serie ?? "D").toUpperCase();
   const allowedSubjects = subjectsForSerie(serie);
 
-  // Charger la dernière leçon consultée
   useEffect(() => {
     if (!user?.id) return;
     supabase
@@ -50,7 +47,6 @@ export default function Cours() {
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  // Toutes les leçons filtrées par série
   const allFiltered = useMemo(() => {
     return lessons.filter((l) => {
       const matiere = (l.matiere ?? l.subject ?? "").toLowerCase();
@@ -63,7 +59,6 @@ export default function Cours() {
     });
   }, [lessons, serie, allowedSubjects]);
 
-  // Nombre de leçons par matière
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
     allFiltered.forEach((l) => {
@@ -73,10 +68,8 @@ export default function Cours() {
     return map;
   }, [allFiltered]);
 
-  // Matière active (URL ou state)
   const currentSubject = subjectFromUrl ?? activeSubject;
 
-  // Leçons de la matière active filtrées par recherche
   const filteredLessons = useMemo(() => {
     if (!currentSubject) return [];
     return allFiltered.filter((l) => {
@@ -90,12 +83,28 @@ export default function Cours() {
     });
   }, [allFiltered, currentSubject, query]);
 
-  // Vue matières (accueil)
   if (!currentSubject) {
     return (
       <DashboardLayout>
         <div className="space-y-6 pb-10">
           <h1 className="text-2xl font-bold">Cours — Série {serie}</h1>
+
+          {/* Bannière reprendre */}
+          {lastLessonId && (
+            <Link href={`/dashboard/lecon/${lastLessonId}`}>
+              <div className="flex items-center gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 hover:bg-blue-500/15 transition-colors">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Reprendre où vous vous êtes arrêté</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold">{lastLessonTitle}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-blue-600 shrink-0" />
+              </div>
+            </Link>
+          )}
+
           {isLoading ? (
             <p className="text-center py-10 text-muted-foreground">Chargement...</p>
           ) : (
@@ -130,20 +139,16 @@ export default function Cours() {
     );
   }
 
-  // Vue leçons d'une matière
   return (
     <DashboardLayout>
       <div className="space-y-6 pb-10">
-        {/* Header retour */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
               if (subjectFromUrl) {
                 window.history.pushState({}, "", "/dashboard/cours");
-                setActiveSubject(null);
-              } else {
-                setActiveSubject(null);
               }
+              setActiveSubject(null);
             }}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -154,7 +159,6 @@ export default function Cours() {
           <h1 className="text-lg font-bold">{currentSubject}</h1>
         </div>
 
-        {/* Recherche */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -165,7 +169,6 @@ export default function Cours() {
           />
         </div>
 
-        {/* Liste leçons */}
         <div className="grid gap-3">
           {filteredLessons.length > 0 ? (
             filteredLessons.map((lesson, i) => (
