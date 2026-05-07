@@ -39,7 +39,7 @@ export default function Exercice() {
   const [showSolution, setShowSolution] = useState(false);
 
   const exercise = useMemo<Exercise | undefined>(
-    () => exercises.find((e) => String(e.id) === String(exerciseId)),
+    () => exercises.find((e) => e.id == exerciseId),
     [exercises, exerciseId],
   );
 
@@ -59,7 +59,7 @@ export default function Exercice() {
         <div className="mx-auto max-w-xl space-y-4 py-16 text-center">
           <h1 className="text-2xl font-bold">Exercice introuvable</h1>
           <p className="text-sm text-muted-foreground">
-            Cet exercice n'existe plus ou n'est pas accessible avec votre série actuelle.
+            Cet exercice est introuvable ou en cours de chargement.
           </p>
           <Link href="/dashboard/exercices">
             <Button className="rounded-full">
