@@ -67,8 +67,25 @@ const safeFetch = async <T,>(table: string): Promise<T[]> => {
 export const useLessons = () =>
   useQuery({ queryKey: ["lessons"], queryFn: () => safeFetch<Course>("lessons") });
 
-export const useExercises = () =>
-  useQuery({ queryKey: ["exercises"], queryFn: () => safeFetch<Exercise>("exercises") });
+export const useExercises = (filters?: { serie?: string; subject?: string }) =>
+  useQuery({
+    queryKey: ["exercises", filters],
+    queryFn: async () => {
+      let query = supabase.from("exercises").select("*");
+      if (filters?.serie) {
+        query = query.ilike("serie", `%${filters.serie}%`);
+      }
+      if (filters?.subject) {
+        query = query.eq("subject", filters.subject);
+      }
+      const { data, error } = await query.limit(1000);
+      if (error) {
+        console.warn("[supabase] exercises:", error.message);
+        return [];
+      }
+      return (data ?? []) as Exercise[];
+    },
+  });
 
 export const useSubjects = () =>
   useQuery({ queryKey: ["subjects"], queryFn: () => safeFetch<Record<string, unknown>>("subjects") });
