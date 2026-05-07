@@ -41,6 +41,7 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -150,11 +151,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              signOut();
-            }}
+            onClick={() => setShowLogoutConfirm(true)}}
             className="rounded-lg p-2 text-sidebar-foreground/70 hover-elevate"
             aria-label="Se déconnecter"
             data-testid="button-signout"
@@ -229,6 +226,32 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+    
+      {/* Dialog confirmation déconnexion */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl border border-border">
+            <h3 className="text-lg font-bold">Se déconnecter ?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Êtes-vous sûr de vouloir vous déconnecter de BAC Master Elite ?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setShowLogoutConfirm(false); signOut(); }}
+                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
