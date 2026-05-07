@@ -34,6 +34,8 @@ export default function Exercice() {
   const params = useParams<{ id: string }>();
   const exerciseId = params.id;
   const { data: exercises = [], isLoading } = useExercises();
+  console.log("ID recherché:", exerciseId);
+  console.log("Exercices chargés:", exercises);
   const [showSolution, setShowSolution] = useState(false);
 
   const exercise = useMemo<Exercise | undefined>(
