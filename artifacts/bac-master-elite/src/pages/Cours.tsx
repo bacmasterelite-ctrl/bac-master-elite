@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { supabase } from "@/lib/supabase";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
+import { supabase } from "@/lib/supabase";
 
 export default function Cours() {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export default function Cours() {
   const { data: lessons = [], isLoading } = useLessons();
   const [query, setQuery] = useState("");
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [lastLessonId, setLastLessonId] = useState<string | null>(null);
+  const [lastLessonTitle, setLastLessonTitle] = useState<string | null>(null);
   const search = useSearch();
   const router = useRouter();
   const params = new URLSearchParams(search);
@@ -24,6 +27,25 @@ export default function Cours() {
 
   const serie = (profile?.serie ?? "D").toUpperCase();
   const allowedSubjects = subjectsForSerie(serie);
+
+  // Charger la dernière leçon consultée
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("lesson_progress")
+      .select("lesson_id, lessons(titre, title)")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data?.lesson_id) {
+          setLastLessonId(String(data.lesson_id));
+          const l = data.lessons as any;
+          setLastLessonTitle(l?.titre ?? l?.title ?? "Reprendre le cours");
+        }
+      });
+  }, [user?.id]);
 
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();

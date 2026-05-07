@@ -7,6 +7,7 @@ import { ArrowLeft, Crown, Download, Loader2, Lock } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import PremiumLimitModal from "@/components/PremiumLimitModal";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useLessons, usePremiumStatus, useCheckCourseAccess, type Course } from "@/lib/queries";
 
@@ -101,6 +102,17 @@ export default function Lecon() {
   const subject = pickString(lessonRecord, "matiere", "subject") || "";
   const content = pickString(lessonRecord, "contenu", "content", "markdown", "text") || "";
   const pdfUrl = pickString(lessonRecord, "pdf_url") || "";
+
+  // Sauvegarder la progression quand la leçon est ouverte
+  useEffect(() => {
+    if (!user?.id || !lessonId || !lesson) return;
+    supabase.from("lesson_progress").upsert({
+      user_id: user.id,
+      lesson_id: lessonId,
+      progress: 1,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,lesson_id" });
+  }, [user?.id, lessonId, lesson]);
 
   // Tâche 2 : URL de retour vers la liste des leçons de la matière
   const backUrl = subject
