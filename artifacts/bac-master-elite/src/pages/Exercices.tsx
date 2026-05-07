@@ -29,10 +29,10 @@ export default function Exercices() {
     return exercises
       .filter((e) => {
         const r = e as Record<string, unknown>;
-        const lessonSerie = ((r.serie as string) ?? "").toUpperCase();
-        if (!lessonSerie) return true;
-        const seriesList = lessonSerie.split('/');
-        return seriesList.includes(serie);
+        const exSerie = ((r.serie as string) ?? "").toUpperCase();
+        if (!exSerie) return true;
+        // "C/D" → ["C","D"] → vérifie si serie est dedans
+        return exSerie.split("/").map(s => s.trim()).includes(serie);
       })
       .map((e) => {
         const r = e as Record<string, unknown>;
@@ -40,27 +40,29 @@ export default function Exercices() {
           id: r.id != null ? String(r.id) : null,
           titre: (r.title as string) ?? (r.titre as string) ?? "Exercice",
           matiere: (r.subject as string) ?? (r.matiere as string) ?? "Général",
-          difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "Moyen").toLowerCase(),
+          difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "moyen").toLowerCase(),
           done: Boolean(r.completed ?? r.done ?? false),
           points: (r.points as number) ?? 10,
         };
       });
   }, [exercises, serie]);
 
+  // countBySubject basé sur matiere (corrigé)
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
     allItems.forEach((ex) => {
-      const mat = ex.subject;
+      const mat = ex.matiere;
       map[mat] = (map[mat] ?? 0) + 1;
     });
     return map;
   }, [allItems]);
 
+  // filteredItems basé sur matiere (corrigé)
   const filteredItems = useMemo(() => {
     if (!activeSubject) return [];
     return allItems.filter((ex) =>
-      normalize(ex.subject).includes(normalize(activeSubject)) ||
-      normalize(activeSubject).includes(normalize(ex.subject))
+      normalize(ex.matiere).includes(normalize(activeSubject)) ||
+      normalize(activeSubject).includes(normalize(ex.matiere))
     );
   }, [allItems, activeSubject]);
 
