@@ -6,10 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 
 interface QuizQuestion {
-  id: number;
+  id: string;
   question: string;
   options: string[];
-  correct_index: number;
+  correct_answer: number;
   explanation?: string;
 }
 
@@ -34,8 +34,18 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
       .from("quiz_questions")
       .select("*")
       .eq("lesson_id", lessonId)
+      .limit(3)
       .then(({ data }) => {
-        setQuestions(data ?? []);
+        const parsed = (data ?? []).map((q) => ({
+          ...q,
+          correct_answer: Number(q.correct_answer),
+          options: Array.isArray(q.options)
+            ? q.options
+            : typeof q.options === "string"
+            ? JSON.parse(q.options)
+            : [],
+        }));
+        setQuestions(parsed);
         setLoading(false);
       });
   }, [lessonId]);
@@ -47,13 +57,13 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
     if (answered) return;
     setSelected(idx);
     setAnswered(true);
-    if (idx === q.correct_index) setScore((s) => s + 1);
+    if (idx === q.correct_answer) setScore((s) => s + 1);
   };
 
   const handleNext = () => {
     const isLast = current + 1 >= total;
     if (isLast) {
-      const finalScore = Math.round(((score + (selected === q.correct_index ? 1 : 0)) / total) * 100);
+      const finalScore = Math.round(((score + (selected === q.correct_answer ? 1 : 0)) / total) * 100);
       setFinished(true);
       if (user?.id) {
         supabase.from("quiz_results").upsert({
@@ -83,8 +93,8 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
     return null;
   }
 
-  const finalScore = finished ? Math.round((score / total) * 100) : 0;
-  const passed = finalScore >= 60;
+  const currentScore = finished ? score : score + (selected === q?.correct_answer ? 1 : 0);
+  const passed = finished && currentScore >= 2;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -100,16 +110,24 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
               <span className="text-xs text-muted-foreground">{current + 1} / {total}</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <motion.div className="h-full rounded-full bg-blue-600" animate={{ width: `${((current + 1) / total) * 100}%` }} />
+              <motion.div
+                className="h-full rounded-full bg-blue-600"
+                animate={{ width: `${((current + 1) / total) * 100}%` }}
+              />
             </div>
             <p className="text-base font-semibold leading-snug">{q.question}</p>
             <div className="space-y-2">
               {q.options.map((opt, idx) => {
                 let cls = "w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ";
-                if (!answered) cls += "border-border hover:border-blue-500 hover:bg-blue-500/5";
-                else if (idx === q.correct_index) cls += "border-emerald-500 bg-emerald-500/10 text-emerald-700";
-                else if (idx === selected) cls += "border-rose-500 bg-rose-500/10 text-rose-700";
-                else cls += "border-border opacity-50";
+                if (!answered) {
+                  cls += "border-border hover:border-blue-500 hover:bg-blue-500/5";
+                } else if (idx === q.correct_answer) {
+                  cls += "border-emerald-500 bg-emerald-500/10 text-emerald-700";
+                } else if (idx === selected) {
+                  cls += "border-rose-500 bg-rose-500/10 text-rose-700";
+                } else {
+                  cls += "border-border opacity-50";
+                }
                 return (
                   <button key={idx} className={cls} onClick={() => handleSelect(idx)}>
                     <span className="mr-2 font-bold text-muted-foreground">{["A","B","C","D"][idx]}.</span>
@@ -121,7 +139,7 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
             <AnimatePresence>
               {answered && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                  {selected === q.correct_index ? (
+                  {selected === q.correct_answer ? (
                     <div className="flex items-start gap-2 rounded-xl bg-emerald-500/10 p-3 text-sm text-emerald-700">
                       <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
                       <span><strong>Excellent !</strong> {q.explanation ?? "Bonne réponse !"}</span>
@@ -129,7 +147,7 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
                   ) : (
                     <div className="flex items-start gap-2 rounded-xl bg-rose-500/10 p-3 text-sm text-rose-700">
                       <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span><strong>Pas tout à fait.</strong> {q.explanation ?? `Bonne réponse : ${q.options[q.correct_index]}`}</span>
+                      <span><strong>Pas tout à fait.</strong> {q.explanation ?? `Bonne réponse : ${q.options[q.correct_answer]}`}</span>
                     </div>
                   )}
                   <Button className="w-full rounded-xl" onClick={handleNext}>
@@ -146,8 +164,8 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
               <Trophy className="h-10 w-10" />
             </div>
             <div>
-              <p className="text-3xl font-extrabold">{finalScore}%</p>
-              <p className="mt-1 text-sm text-muted-foreground">{score} / {total} bonnes réponses</p>
+              <p className="text-3xl font-extrabold">{score} / {total}</p>
+              <p className="mt-1 text-sm text-muted-foreground">bonnes réponses</p>
             </div>
             {passed ? (
               <div className="rounded-2xl bg-emerald-500/10 p-4">
@@ -157,15 +175,20 @@ export default function QuizModal({ lessonId, onComplete, onSkip }: Props) {
             ) : (
               <div className="rounded-2xl bg-amber-500/10 p-4">
                 <p className="font-bold text-amber-700">💪 Tu peux faire mieux !</p>
-                <p className="mt-1 text-sm text-amber-600">Relis la leçon et réessaie. Chaque erreur est une leçon apprise !</p>
+                <p className="mt-1 text-sm text-amber-600">Il faut au moins 2 bonnes réponses sur 3. Relis la leçon et réessaie !</p>
               </div>
             )}
             <div className="flex gap-3">
               {!passed && (
-                <Button variant="outline" className="flex-1 rounded-xl" onClick={onSkip}>Relire la leçon</Button>
+                <Button variant="outline" className="flex-1 rounded-xl" onClick={onSkip}>
+                  Relire la leçon
+                </Button>
               )}
-              <Button className={`rounded-xl ${passed ? "w-full" : "flex-1"} bg-hero-gradient text-white`} onClick={onComplete}>
-                {passed ? "Marquer comme terminé" : "Valider quand même"}
+              <Button
+                className={`rounded-xl ${passed ? "w-full" : "flex-1"} bg-hero-gradient text-white`}
+                onClick={onComplete}
+              >
+                {passed ? "Leçon validée ✓" : "Valider quand même"}
               </Button>
             </div>
           </div>
