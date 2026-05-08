@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLessons, useProfile } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, ChevronLeft, BookOpen } from "lucide-react";
+import { Search, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
@@ -19,6 +19,7 @@ export default function Cours() {
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [lastLessonId, setLastLessonId] = useState<string | null>(null);
   const [lastLessonTitle, setLastLessonTitle] = useState<string | null>(null);
+  const [progressMap, setProgressMap] = useState<Record<string, "in_progress" | "completed">>({});
   const search = useSearch();
   const params = new URLSearchParams(search);
   const subjectFromUrl = params.get("subject");
@@ -26,6 +27,7 @@ export default function Cours() {
   const serie = (profile?.serie ?? "D").toUpperCase();
   const allowedSubjects = subjectsForSerie(serie);
 
+  // Dernière leçon consultée
   useEffect(() => {
     if (!user?.id) return;
     supabase
@@ -41,6 +43,23 @@ export default function Cours() {
           const l = data.lessons as any;
           setLastLessonTitle(l?.titre ?? l?.title ?? "Reprendre le cours");
         }
+      });
+  }, [user?.id]);
+
+  // Charger les statuts de progression
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("lesson_progress")
+      .select("lesson_id, status")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, "in_progress" | "completed"> = {};
+        data.forEach((row) => {
+          map[String(row.lesson_id)] = row.status ?? "in_progress";
+        });
+        setProgressMap(map);
       });
   }, [user?.id]);
 
@@ -89,7 +108,6 @@ export default function Cours() {
         <div className="space-y-6 pb-10">
           <h1 className="text-2xl font-bold">Cours — Série {serie}</h1>
 
-          {/* Bannière reprendre */}
           {lastLessonId && (
             <Link href={`/dashboard/lecon/${lastLessonId}`}>
               <div className="flex items-center gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 hover:bg-blue-500/15 transition-colors">
@@ -145,15 +163,12 @@ export default function Cours() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              if (subjectFromUrl) {
-                window.history.pushState({}, "", "/dashboard/cours");
-              }
+              if (subjectFromUrl) window.history.pushState({}, "", "/dashboard/cours");
               setActiveSubject(null);
             }}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="h-4 w-4" />
-            Matières
+            <ChevronLeft className="h-4 w-4" /> Matières
           </button>
           <span className="text-muted-foreground">/</span>
           <h1 className="text-lg font-bold">{currentSubject}</h1>
@@ -171,34 +186,53 @@ export default function Cours() {
 
         <div className="grid gap-3">
           {filteredLessons.length > 0 ? (
-            filteredLessons.map((lesson, i) => (
-              <motion.div
-                key={lesson.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="p-4 border rounded-xl bg-card shadow-sm"
-              >
-                <h3 className="font-bold mb-3">{lesson.titre ?? lesson.title ?? "Sans titre"}</h3>
-                <Link
-                  href={`/dashboard/lecon/${lesson.id}`}
-                  onClick={() => {
-                    if (user?.id) {
-                      supabase.from("lesson_progress").upsert({
-                        user_id: user.id,
-                        lesson_id: lesson.id,
-                        progress: 1,
-                        updated_at: new Date().toISOString(),
-                      });
-                    }
-                  }}
+            filteredLessons.map((lesson, i) => {
+              const status = progressMap[String(lesson.id)];
+              const isCompleted = status === "completed";
+              const isInProgress = status === "in_progress";
+              return (
+                <motion.div
+                  key={lesson.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="p-4 border rounded-xl bg-card shadow-sm"
                 >
-                  <Button className="w-full justify-between">
-                    Commencer <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </motion.div>
-            ))
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-bold">{lesson.titre ?? lesson.title ?? "Sans titre"}</h3>
+                    {isCompleted && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 shrink-0 ml-2">
+                        <CheckCircle2 className="h-3 w-3" /> Terminé
+                      </span>
+                    )}
+                    {isInProgress && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600 shrink-0 ml-2">
+                        <Clock className="h-3 w-3" /> En cours
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href={`/dashboard/lecon/${lesson.id}`}
+                    onClick={() => {
+                      if (user?.id) {
+                        supabase.from("lesson_progress").upsert({
+                          user_id: user.id,
+                          lesson_id: lesson.id,
+                          progress: 1,
+                          status: isCompleted ? "completed" : "in_progress",
+                          updated_at: new Date().toISOString(),
+                        }, { onConflict: "user_id,lesson_id" });
+                      }
+                    }}
+                  >
+                    <Button className={`w-full justify-between ${isCompleted ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                      {isCompleted ? "Revoir" : isInProgress ? "Continuer" : "Commencer"}
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </motion.div>
+              );
+            })
           ) : (
             <p className="text-center py-10 text-muted-foreground">Aucune leçon trouvée.</p>
           )}

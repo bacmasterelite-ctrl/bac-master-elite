@@ -95,7 +95,7 @@ export default function Dashboard() {
       .from("lesson_progress")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gt("progress", 0)
+      .eq("status", "completed")
       .then(({ count }) => setCoursCount(count ?? 0));
 
     // Exercices complétés
@@ -205,7 +205,7 @@ export default function Dashboard() {
       total: lessons.length || null,
       icon: BookOpen,
       color: "from-blue-600 to-blue-500",
-      delta: coursCount > 0 ? `${coursCount} cours commencés` : null,
+      delta: coursCount > 0 ? `${coursCount} cours terminés` : null,
     },
     {
       label: "Exercices résolus",

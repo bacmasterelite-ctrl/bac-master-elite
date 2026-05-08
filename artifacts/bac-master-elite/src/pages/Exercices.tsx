@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useExercises, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
+import { supabase } from "@/lib/supabase";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
 
 const difficultyColor: Record<string, string> = {
@@ -18,9 +19,27 @@ export default function Exercices() {
   const { data: profile } = useProfile(user?.id);
   const { data: exercises = [], isLoading } = useExercises();
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [progressMap, setProgressMap] = useState<Record<string, "in_progress" | "completed">>({});
 
   const serie = (profile?.serie ?? "D").toUpperCase();
   const allowedSubjects = subjectsForSerie(serie);
+
+  // Charger les statuts des exercices
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("user_exercise_progress")
+      .select("exercise_id, status")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, "in_progress" | "completed"> = {};
+        data.forEach((row) => {
+          map[String(row.exercise_id)] = row.status ?? "in_progress";
+        });
+        setProgressMap(map);
+      });
+  }, [user?.id]);
 
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -31,33 +50,31 @@ export default function Exercices() {
         const r = e as Record<string, unknown>;
         const exSerie = ((r.serie as string) ?? "").toUpperCase();
         if (!exSerie) return true;
-        // "C/D" → ["C","D"] → vérifie si serie est dedans
         return exSerie.split("/").map(s => s.trim()).includes(serie);
       })
       .map((e) => {
         const r = e as Record<string, unknown>;
+        const id = r.id != null ? String(r.id) : null;
+        const status = id ? progressMap[id] : undefined;
         return {
-          id: r.id != null ? String(r.id) : null,
+          id,
           titre: (r.title as string) ?? (r.titre as string) ?? "Exercice",
           matiere: (r.subject as string) ?? (r.matiere as string) ?? "Général",
           difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "moyen").toLowerCase(),
-          done: Boolean(r.completed ?? r.done ?? false),
+          status,
           points: (r.points as number) ?? 10,
         };
       });
-  }, [exercises, serie]);
+  }, [exercises, serie, progressMap]);
 
-  // countBySubject basé sur matiere (corrigé)
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
     allItems.forEach((ex) => {
-      const mat = ex.matiere;
-      map[mat] = (map[mat] ?? 0) + 1;
+      map[ex.matiere] = (map[ex.matiere] ?? 0) + 1;
     });
     return map;
   }, [allItems]);
 
-  // filteredItems basé sur matiere (corrigé)
   const filteredItems = useMemo(() => {
     if (!activeSubject) return [];
     return allItems.filter((ex) =>
@@ -121,8 +138,7 @@ export default function Exercices() {
             onClick={() => setActiveSubject(null)}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="h-4 w-4" />
-            Matières
+            <ChevronLeft className="h-4 w-4" /> Matières
           </button>
           <span className="text-muted-foreground">/</span>
           <h1 className="text-lg font-bold">{activeSubject}</h1>
@@ -133,10 +149,15 @@ export default function Exercices() {
         ) : (
           <div className="grid gap-3">
             {filteredItems.map((ex, i) => {
-              const ctaLabel = ex.done ? "Revoir" : "Commencer";
-              const ctaClasses = ex.done
-                ? "border border-border bg-background text-foreground"
+              const isCompleted = ex.status === "completed";
+              const isInProgress = ex.status === "in_progress";
+              const ctaLabel = isCompleted ? "Revoir" : isInProgress ? "Continuer" : "Commencer";
+              const ctaClasses = isCompleted
+                ? "border border-emerald-500 bg-emerald-500/10 text-emerald-700"
+                : isInProgress
+                ? "border border-amber-500 bg-amber-500/10 text-amber-700"
                 : "bg-hero-gradient text-white";
+
               const inner = (
                 <motion.div
                   initial={{ opacity: 0, x: -8 }}
@@ -144,8 +165,8 @@ export default function Exercices() {
                   transition={{ delay: i * 0.04 }}
                   className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center"
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${ex.done ? "bg-emerald-500/15 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
-                    {ex.done ? <CheckCircle2 className="h-5 w-5" /> : <PenLine className="h-5 w-5" />}
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isCompleted ? "bg-emerald-500/15 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
+                    {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : <PenLine className="h-5 w-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -157,6 +178,16 @@ export default function Exercices() {
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />~15 min</span>
                       <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" />{ex.points} pts</span>
+                      {isInProgress && (
+                        <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                          <Clock className="h-3 w-3" /> En cours
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
+                          <CheckCircle2 className="h-3 w-3" /> Terminé
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className={`inline-flex items-center justify-center gap-1 rounded-full px-4 py-2 text-xs font-semibold ${ctaClasses}`}>
