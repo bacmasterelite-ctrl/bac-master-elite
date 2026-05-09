@@ -72,6 +72,7 @@ export default function Dashboard() {
   // Vraies données utilisateur
   const [coursCount, setCoursCount] = useState(0);
   const [exercicesCount, setExercicesCount] = useState(0);
+  const [annalsCount, setAnnalsCount] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [progressData, setProgressData] = useState<{ semaine: string; score: number }[]>([
     { semaine: "S1", score: 0 }, { semaine: "S2", score: 0 }, { semaine: "S3", score: 0 },
@@ -106,18 +107,27 @@ export default function Dashboard() {
       .eq("completed", true)
       .then(({ count }) => setExercicesCount(count ?? 0));
 
-    // Score moyen cette semaine
+    // Annales consultées
     supabase
-      .from("user_exercise_progress")
-      .select("score")
+      .from("annal_progress")
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("completed_at", weekAgo.toISOString())
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const avg = data.reduce((a, b) => a + (b.score ?? 0), 0) / data.length;
-          setWeeklyProgress(Math.round(avg));
-        }
-      });
+      .then(({ count }) => setAnnalsCount(count ?? 0));
+
+    // Score moyen cette semaine
+    // Score moyen global (leçons + exercices)
+    Promise.all([
+      supabase.from("lesson_progress").select("quiz_score")
+        .eq("user_id", user.id).eq("status", "completed").not("quiz_score", "is", null),
+      supabase.from("user_exercise_progress").select("score")
+        .eq("user_id", user.id).eq("completed", true).not("score", "is", null),
+    ]).then(([lessons, exos]) => {
+      const all = [
+        ...(lessons.data ?? []).map((r) => r.quiz_score ?? 0),
+        ...(exos.data ?? []).map((r) => r.score ?? 0),
+      ];
+      if (all.length > 0) setWeeklyProgress(Math.round(all.reduce((a,b) => a+b,0) / all.length));
+    });
 
     // Progression hebdomadaire (7 semaines)
     const weeks = Array.from({ length: 7 }, (_, i) => {
@@ -217,7 +227,7 @@ export default function Dashboard() {
     },
     {
       label: "Annales travaillées",
-      value: 0,
+      value: annalsCount ?? 0,
       total: annals.length || null,
       icon: Trophy,
       color: "from-amber-500 to-orange-500",
