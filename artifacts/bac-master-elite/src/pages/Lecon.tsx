@@ -78,6 +78,42 @@ export default function Lecon() {
   const [accessDenied, setAccessDenied] = useState(false);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+
+  const handleReadAloud = () => {
+    if (!window.speechSynthesis) return;
+    if (isReading) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      return;
+    }
+    const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "fr-FR";
+    utterance.rate = 0.9;
+    utterance.onend = () => setIsReading(false);
+    utterance.onerror = () => setIsReading(false);
+    window.speechSynthesis.speak(utterance);
+    setIsReading(true);
+  };
+  const [isReading, setIsReading] = useState(false);
+
+  const handleReadAloud = () => {
+    if (!window.speechSynthesis) return;
+    if (isReading) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      return;
+    }
+    const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "fr-FR";
+    utterance.rate = 0.9;
+    utterance.onend = () => setIsReading(false);
+    utterance.onerror = () => setIsReading(false);
+    window.speechSynthesis.speak(utterance);
+    setIsReading(true);
+  };
   const [completed, setCompleted] = useState(false);
   const [debugMsg, setDebugMsg] = useState("");
 
@@ -250,6 +286,14 @@ export default function Lecon() {
                 <CheckCircle2 className="h-3.5 w-3.5" /> Terminé
               </span>
             )}
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReadAloud}
+                className={isReading ? "border-rose-500 text-rose-600" : ""}
+              >
+                {isReading ? "⏹ Arrêter" : "🔊 Écouter"}
+              </Button>
             {isPremium && (
               <Button onClick={handlePrint} className="bg-blue-600 text-white hover:bg-blue-700">
                 <Download className="mr-2 h-4 w-4" /> Sauvegarder en PDF
