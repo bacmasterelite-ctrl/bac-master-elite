@@ -96,7 +96,7 @@ export default function Dashboard() {
       .from("lesson_progress")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("status", "completed")
+      .gt("progress", 0)
       .then(({ count }) => setCoursCount(count ?? 0));
 
     // Exercices complétés
@@ -118,7 +118,7 @@ export default function Dashboard() {
     // Score moyen global (leçons + exercices)
     Promise.all([
       supabase.from("lesson_progress").select("quiz_score")
-        .eq("user_id", user.id).eq("status", "completed").not("quiz_score", "is", null),
+        .eq("user_id", user.id).gt("progress", 0).not("quiz_score", "is", null),
       supabase.from("user_exercise_progress").select("score")
         .eq("user_id", user.id).eq("completed", true).not("score", "is", null),
     ]).then(([lessons, exos]) => {
