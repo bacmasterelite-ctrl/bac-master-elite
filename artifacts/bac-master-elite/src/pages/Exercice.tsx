@@ -73,13 +73,12 @@ export default function Exercice() {
     setShowSolution(true);
     // Sauvegarder la réponse
     if (user?.id && exerciseId) {
-      supabase.from("user_exercise_progress").upsert({
-        user_id: user.id,
-        exercise_id: exerciseId,
-        status: "in_progress",
-        user_answer: userAnswer,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id,exercise_id" });
+      supabase.rpc("save_exercise_progress", {
+        p_exercise_id: exerciseId,
+        p_status: "in_progress",
+        p_score: 0,
+        p_answer: userAnswer,
+      });
     }
   };
 
@@ -87,16 +86,12 @@ export default function Exercice() {
     setSelfEval(result);
     setCompleted(true);
     if (user?.id && exerciseId) {
-      supabase.from("user_exercise_progress").upsert({
-        user_id: user.id,
-        exercise_id: exerciseId,
-        status: "completed",
-        user_answer: userAnswer,
-        score: result === "correct" ? 100 : 40,
-        completed: true,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id,exercise_id" });
+      supabase.rpc("save_exercise_progress", {
+        p_exercise_id: exerciseId,
+        p_status: "completed",
+        p_score: result === "correct" ? 100 : 40,
+        p_answer: userAnswer,
+      });
     }
   };
 
