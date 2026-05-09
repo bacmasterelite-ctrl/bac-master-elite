@@ -133,11 +133,13 @@ export default function Lecon() {
           setCompleted(true);
           return;
         }
-        supabase.rpc("save_lesson_progress", {
-          p_lesson_id: lessonId,
-          p_status: "in_progress",
-          p_progress: 1,
-        });
+        supabase.from("lesson_progress").upsert({
+          user_id: user.id,
+          lesson_id: lessonId,
+          progress: 1,
+          status: "in_progress",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,lesson_id" }).then(({error}) => { if(error) console.error("LP error:", error); });
       });
   }, [user?.id, lessonId]);
 
@@ -145,11 +147,13 @@ export default function Lecon() {
     setShowQuiz(false);
     setCompleted(true);
     if (user?.id && lessonId) {
-      supabase.rpc("save_lesson_progress", {
-        p_lesson_id: lessonId,
-        p_status: "completed",
-        p_progress: 100,
-      });
+      supabase.from("lesson_progress").upsert({
+          user_id: user.id,
+          lesson_id: lessonId,
+          progress: 100,
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,lesson_id" }).then(({error}) => { if(error) console.error("LP complete error:", error); });
     }
   };
 
