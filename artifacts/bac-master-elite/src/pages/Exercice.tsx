@@ -53,14 +53,15 @@ export default function Exercice() {
     if (!user?.id || !exerciseId) return;
     supabase
       .from("user_exercise_progress")
-      .select("status, user_answer")
+      .select("status, user_answer, completed")
       .eq("user_id", user.id)
       .eq("exercise_id", exerciseId)
       .single()
       .then(({ data }) => {
-        if (data?.status === "completed") {
+        if (data?.completed === true || data?.status === "completed") {
           setCompleted(true);
           setSubmitted(true);
+          setShowSolution(true);
           if (data.user_answer) setUserAnswer(data.user_answer);
         }
       });

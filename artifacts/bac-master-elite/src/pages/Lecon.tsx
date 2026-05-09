@@ -121,13 +121,26 @@ export default function Lecon() {
 
   useEffect(() => {
     if (!user?.id || !lessonId) return;
-    supabase.from("lesson_progress").upsert({
-      user_id: user.id,
-      lesson_id: lessonId,
-      progress: 1,
-      status: "in_progress",
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,lesson_id" });
+    // Vérifier d'abord si déjà completed avant d'upsert
+    supabase.from("lesson_progress")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("lesson_id", lessonId)
+      .single()
+      .then(({ data }) => {
+        // Ne pas écraser si déjà completed
+        if (data?.status === "completed") {
+          setCompleted(true);
+          return;
+        }
+        supabase.from("lesson_progress").upsert({
+          user_id: user.id,
+          lesson_id: lessonId,
+          progress: 1,
+          status: "in_progress",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,lesson_id" });
+      });
   }, [user?.id, lessonId]);
 
   const handleQuizComplete = () => {

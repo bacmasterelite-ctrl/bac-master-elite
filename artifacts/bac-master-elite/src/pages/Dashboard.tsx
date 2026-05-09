@@ -71,6 +71,7 @@ export default function Dashboard() {
 
   // Vraies données utilisateur
   const [coursCount, setCoursCount] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [exercicesCount, setExercicesCount] = useState(0);
   const [annalsCount, setAnnalsCount] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
@@ -198,7 +199,14 @@ export default function Dashboard() {
         setMatieresData(result);
       });
 
-  }, [user?.id]);
+  }, [user?.id, refreshKey]);
+
+  // Rafraîchir à chaque fois que la page devient visible
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) setRefreshKey(k => k + 1); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   // Rafraîchir quand la page devient visible
   useEffect(() => {
