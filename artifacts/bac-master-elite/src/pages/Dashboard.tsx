@@ -177,27 +177,34 @@ export default function Dashboard() {
       }
     });
 
-    // Performance par matière
+    // Performance par matière - deux requêtes séparées
     supabase
       .from("user_exercise_progress")
-      .select("score, exercise_id, exercises(subject)")
+      .select("score, exercise_id")
       .eq("user_id", user.id)
-      
-      .then(({ data }) => {
-        if (!data || data.length === 0) return;
+      .eq("completed", true)
+      .then(async ({ data: progData }) => {
+        if (!progData || progData.length === 0) return;
+        const ids = [...new Set(progData.map((r: any) => r.exercise_id).filter(Boolean))];
+        const { data: exData } = await supabase
+          .from("exercises")
+          .select("id, subject")
+          .in("id", ids);
+        if (!exData) return;
+        const subjectMap: Record<string, string> = {};
+        exData.forEach((e: any) => { subjectMap[e.id] = e.subject ?? "Autre"; });
         const bySubject: Record<string, number[]> = {};
-        data.forEach((row) => {
-          const subj = (row.exercises as any)?.subject ?? "Autre";
+        progData.forEach((row: any) => {
+          const subj = subjectMap[row.exercise_id] ?? "Autre";
           if (!bySubject[subj]) bySubject[subj] = [];
           bySubject[subj].push(row.score ?? 0);
         });
         const result = Object.entries(bySubject).slice(0, 5).map(([subj, scores]) => ({
           matiere: subj.length > 8 ? subj.slice(0, 8) + "." : subj,
-          score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+          score: Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length),
         }));
         setMatieresData(result);
       });
-
   }, [user?.id, refreshKey]);
 
   // Rafraîchir à chaque fois que la page devient visible
