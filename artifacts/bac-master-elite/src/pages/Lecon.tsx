@@ -79,6 +79,7 @@ export default function Lecon() {
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [debugMsg, setDebugMsg] = useState("");
 
   const lesson = useMemo<Course | undefined>(
     () => lessons.find((l) => String(l.id) === String(lessonId)),
@@ -281,7 +282,10 @@ export default function Lecon() {
               />
             </div>
 
-            {/* Bouton valider la leçon */}
+            {debugMsg && (
+          <div className="mx-4 mb-2 rounded-xl bg-rose-500/10 p-3 text-xs text-rose-700">{debugMsg}</div>
+        )}
+        {/* Bouton valider la leçon */}
             <div className="border-t p-6">
               {completed ? (
                 <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 p-4">
