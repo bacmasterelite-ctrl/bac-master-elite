@@ -87,10 +87,43 @@ export default function Lecon() {
       setIsReading(false);
       return;
     }
-    const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    // Nettoyer le HTML et remplacer les formules math
+    let text = content
+      .replace(/<[^>]*>/g, " ")
+      .replace(/²/g, " au carré ")
+      .replace(/³/g, " au cube ")
+      .replace(/√/g, " racine de ")
+      .replace(/×/g, " fois ")
+      .replace(/÷/g, " divisé par ")
+      .replace(/≥/g, " supérieur ou égal à ")
+      .replace(/≤/g, " inférieur ou égal à ")
+      .replace(/≠/g, " différent de ")
+      .replace(/∑/g, " somme de ")
+      .replace(/∞/g, " infini ")
+      .replace(/π/g, " pi ")
+      .replace(/α/g, " alpha ")
+      .replace(/β/g, " bêta ")
+      .replace(/Δ/g, " delta ")
+      .replace(/∈/g, " appartient à ")
+      .replace(/⊂/g, " inclus dans ")
+      .replace(/∩/g, " intersection ")
+      .replace(/∪/g, " union ")
+      .replace(/°/g, " degrés ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Détection automatique de la langue
+    const frWords = ["le","la","les","de","du","des","et","est","en","un","une","que","qui","pour","dans","sur","avec","par","au","aux","ce","se","il","elle","nous","vous","ils","elles","je","tu"];
+    const enWords = ["the","and","is","are","was","were","have","has","been","with","that","this","from","they","will","would","could","should","which","their"];
+    const words = text.toLowerCase().split(/\s+/);
+    const frCount = words.filter(w => frWords.includes(w)).length;
+    const enCount = words.filter(w => enWords.includes(w)).length;
+    const lang = enCount > frCount ? "en-US" : "fr-FR";
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "fr-FR";
+    utterance.lang = lang;
     utterance.rate = 0.9;
+    utterance.pitch = 1;
     utterance.onend = () => setIsReading(false);
     utterance.onerror = () => setIsReading(false);
     window.speechSynthesis.speak(utterance);
