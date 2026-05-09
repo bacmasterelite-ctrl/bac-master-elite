@@ -97,7 +97,7 @@ export default function Dashboard() {
       .from("lesson_progress")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gt("progress", 0)
+      .select("id")
       .then(({ count }) => setCoursCount(count ?? 0));
 
     // Exercices complétés
@@ -105,7 +105,7 @@ export default function Dashboard() {
       .from("user_exercise_progress")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("completed", true)
+      
       .then(({ count }) => setExercicesCount(count ?? 0));
 
     // Annales consultées
@@ -119,9 +119,9 @@ export default function Dashboard() {
     // Score moyen global (leçons + exercices)
     Promise.all([
       supabase.from("lesson_progress").select("quiz_score")
-        .eq("user_id", user.id).gt("progress", 0).not("quiz_score", "is", null),
+        .eq("user_id", user.id).select("id").not("quiz_score", "is", null),
       supabase.from("user_exercise_progress").select("score")
-        .eq("user_id", user.id).eq("completed", true).not("score", "is", null),
+        .eq("user_id", user.id).not("score", "is", null),
     ]).then(([lessons, exos]) => {
       const all = [
         ...(lessons.data ?? []).map((r) => r.quiz_score ?? 0),
@@ -182,7 +182,7 @@ export default function Dashboard() {
       .from("user_exercise_progress")
       .select("score, exercise_id, exercises(subject)")
       .eq("user_id", user.id)
-      .eq("completed", true)
+      
       .then(({ data }) => {
         if (!data || data.length === 0) return;
         const bySubject: Record<string, number[]> = {};
@@ -211,8 +211,8 @@ export default function Dashboard() {
   useEffect(() => {
     const handleFocus = () => {
       if (user?.id) {
-        supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).gt("progress", 0).then(({ count }) => setCoursCount(count ?? 0));
-        supabase.from("user_exercise_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("completed", true).then(({ count }) => setExercicesCount(count ?? 0));
+        supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).select("id").then(({ count }) => setCoursCount(count ?? 0));
+        supabase.from("user_exercise_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).then(({ count }) => setExercicesCount(count ?? 0));
         supabase.from("annal_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).then(({ count }) => setAnnalsCount(count ?? 0));
       }
     };
