@@ -132,8 +132,8 @@ export function styleForSubject(name?: string | null): SubjectStyle {
 
 export const SUBJECTS_BY_SERIE: Record<string, string[]> = {
   A: ["Philosophie", "Français", "Histoire-Géo", "Anglais", "Littérature"],
-  C: ["Mathématiques", "Physique", "Chimie", "SVT", "Philosophie", "Anglais"],
-  D: ["Mathématiques", "SVT", "Physique", "Chimie", "Philosophie", "Anglais"],
+  C: ["Mathématiques", "Physique", "Chimie", "SVT", "Philosophie", "Anglais", "Histoire-Géo"],
+  D: ["Mathématiques", "SVT", "Physique", "Chimie", "Philosophie", "Anglais", "Histoire-Géo"],
 };
 
 export function subjectsForSerie(serie?: string | null): string[] {
