@@ -111,6 +111,9 @@ const ALIASES: Record<string, keyof typeof STYLES> = {
   history: "histoire",
   geography: "histoire",
   "histoire-géo": "histoire",
+  "histoire-geographie": "histoire",
+  "histoire-géographie": "histoire",
+  "physique-chimie": "physique",
   english: "anglais",
 };
 
