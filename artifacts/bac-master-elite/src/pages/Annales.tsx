@@ -54,7 +54,12 @@ function getExamBadgeColor(a: DisplayAnnal): string {
 function isAllowedForSerie(matiere: string, allowedSubjects: string[]): boolean {
   const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
   const m = normalize(matiere);
-  return allowedSubjects.some((s) => normalize(s).includes(m) || m.includes(normalize(s)));
+  // Gérer les matières combinées comme "Physique-Chimie" et "Histoire-Géographie"
+  const parts = m.split("-").map(p => p.trim());
+  return allowedSubjects.some((s) => {
+    const ns = normalize(s);
+    return ns.includes(m) || m.includes(ns) || parts.some(p => ns.includes(p) || p.includes(ns));
+  });
 }
 
 function buildAnnalPdf(a: DisplayAnnal, kind: "sujet" | "corrige") {
