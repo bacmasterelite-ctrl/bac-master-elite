@@ -198,6 +198,20 @@ export default function Dashboard() {
       });
 
   }, [user?.id]);
+
+  // Rafraîchir quand la page devient visible
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.id) {
+        supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).gt("progress", 0).then(({ count }) => setCoursCount(count ?? 0));
+        supabase.from("user_exercise_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("completed", true).then(({ count }) => setExercicesCount(count ?? 0));
+        supabase.from("annal_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).then(({ count }) => setAnnalsCount(count ?? 0));
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) handleFocus(); });
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [user?.id]);
   const allowedSubjects = subjectsForSerie(serie);
 
   const lessons = lessonsRaw.filter((l) => matchesSerie(l as Record<string, unknown>, serie) && matchesSubjectAllowed(l as Record<string, unknown>, allowedSubjects));
