@@ -272,10 +272,6 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Debug visible */}
-        <div className="rounded-xl bg-blue-500/10 p-3 text-xs text-blue-700">
-          user.id: {user?.id ?? "NON CONNECTÉ"} | cours: {coursCount} | exos: {exercicesCount}
-        </div>
         {/* Hero */}
         <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl bg-hero-gradient p-6 text-white sm:p-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
