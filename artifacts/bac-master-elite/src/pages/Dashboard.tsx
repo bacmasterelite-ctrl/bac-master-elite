@@ -88,6 +88,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user?.id) return;
+    console.log('Dashboard user.id:', user.id);
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
