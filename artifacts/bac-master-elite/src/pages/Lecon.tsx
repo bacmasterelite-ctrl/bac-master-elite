@@ -79,7 +79,7 @@ export default function Lecon() {
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [debugMsg, setDebugMsg] = useState("Chargement...");
+  const [debugMsg, setDebugMsg] = useState("");
 
   const lesson = useMemo<Course | undefined>(
     () => lessons.find((l) => String(l.id) === String(lessonId)),
@@ -120,7 +120,7 @@ export default function Lecon() {
   const pdfUrl = pickString(lessonRecord, "pdf_url") || "";
 
   useEffect(() => {
-    if (!user?.id || !lessonId || !lesson) return;
+    if (!user?.id || !lessonId) return;
     supabase.from("lesson_progress").upsert({
       user_id: user.id,
       lesson_id: lessonId,
@@ -128,7 +128,7 @@ export default function Lecon() {
       status: "in_progress",
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,lesson_id" });
-  }, [user?.id, lessonId, lesson]);
+  }, [user?.id, lessonId]);
 
   const handleQuizComplete = () => {
     setShowQuiz(false);
