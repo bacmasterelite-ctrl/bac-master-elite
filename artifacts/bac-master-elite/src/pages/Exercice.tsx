@@ -78,7 +78,6 @@ export default function Exercice() {
         exercise_id: exerciseId,
         status: "in_progress",
         user_answer: userAnswer,
-        updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,exercise_id" }).then(({error}) => { if(error) console.error("UEP error:", error); });
     }
   };
@@ -95,7 +94,6 @@ export default function Exercice() {
         score: result === "correct" ? 100 : 40,
         completed: true,
         completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,exercise_id" }).then(({error}) => { if(error) console.error("UEP complete error:", error); });
     }
   };
