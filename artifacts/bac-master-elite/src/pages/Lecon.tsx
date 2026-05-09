@@ -96,24 +96,6 @@ export default function Lecon() {
     window.speechSynthesis.speak(utterance);
     setIsReading(true);
   };
-  const [isReading, setIsReading] = useState(false);
-
-  const handleReadAloud = () => {
-    if (!window.speechSynthesis) return;
-    if (isReading) {
-      window.speechSynthesis.cancel();
-      setIsReading(false);
-      return;
-    }
-    const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "fr-FR";
-    utterance.rate = 0.9;
-    utterance.onend = () => setIsReading(false);
-    utterance.onerror = () => setIsReading(false);
-    window.speechSynthesis.speak(utterance);
-    setIsReading(true);
-  };
   const [completed, setCompleted] = useState(false);
   const [debugMsg, setDebugMsg] = useState("");
 
