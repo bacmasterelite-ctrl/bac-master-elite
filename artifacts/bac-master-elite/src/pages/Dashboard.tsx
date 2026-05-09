@@ -489,9 +489,9 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">Votre planning intelligent</p>
             <div className="mt-4 space-y-4">
               {[
-                { label: "Réviser la dérivation", progress: 80, time: "30 min" },
-                { label: "Exercices SVT — Génétique", progress: 45, time: "20 min" },
-                { label: "Annale Philo 2024", progress: 10, time: "1h" },
+                { label: `Terminer 1 leçon en ${allowedSubjects[0] ?? ""}`, progress: Math.min(coursCount * 100, 100), time: "30 min" },
+                { label: `Résoudre 1 exercice en ${allowedSubjects[1] ?? allowedSubjects[0] ?? ""}`, progress: Math.min(exercicesCount * 100, 100), time: "20 min" },
+                { label: `Consulter 1 annale`, progress: Math.min(annalsCount * 100, 100), time: "1h" },
               ].map((g) => (
                 <div key={g.label}>
                   <div className="flex items-center justify-between text-sm">
