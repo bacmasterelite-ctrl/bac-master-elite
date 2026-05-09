@@ -79,7 +79,7 @@ export default function Lecon() {
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [debugMsg, setDebugMsg] = useState("");
+  const [debugMsg, setDebugMsg] = useState("Chargement...");
 
   const lesson = useMemo<Course | undefined>(
     () => lessons.find((l) => String(l.id) === String(lessonId)),
