@@ -79,6 +79,7 @@ export default function Lecon() {
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [isReading, setIsReading] = useState(false);
+  const [readSpeed, setReadSpeed] = useState(0.9);
 
   const handleReadAloud = () => {
     if (!window.speechSynthesis) return;
@@ -122,7 +123,7 @@ export default function Lecon() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
-    utterance.rate = 0.9;
+    utterance.rate = readSpeed;
     utterance.pitch = 1;
     utterance.onend = () => setIsReading(false);
     utterance.onerror = () => setIsReading(false);
@@ -301,14 +302,34 @@ export default function Lecon() {
                 <CheckCircle2 className="h-3.5 w-3.5" /> Terminé
               </span>
             )}
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReadAloud}
-                className={isReading ? "border-rose-500 text-rose-600" : ""}
-              >
-                {isReading ? "⏹ Arrêter" : "🔊 Écouter"}
-              </Button>
+            {isPremium ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReadAloud}
+                  className={`px-2 text-xs ${isReading ? "border-rose-500 text-rose-600" : ""}`}
+                >
+                  {isReading ? "⏹" : "🔊"}
+                </Button>
+                {isReading && (
+                  <select
+                    value={readSpeed}
+                    onChange={(e) => {
+                      const s = parseFloat(e.target.value);
+                      setReadSpeed(s);
+                      window.speechSynthesis.cancel();
+                      setIsReading(false);
+                    }}
+                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                  >
+                    <option value={0.6}>Lent</option>
+                    <option value={0.9}>Normal</option>
+                    <option value={1.2}>Rapide</option>
+                  </select>
+                )}
+              </div>
+            ) : null}
             {isPremium && (
               <Button onClick={handlePrint} className="bg-blue-600 text-white hover:bg-blue-700">
                 <Download className="mr-2 h-4 w-4" /> Sauvegarder en PDF
