@@ -63,7 +63,7 @@ async function getGroqResponse(prompt: string): Promise<string> {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: 2048,
     }),
   });
   if (!res.ok) {
@@ -93,7 +93,7 @@ async function getOpenRouterResponse(prompt: string): Promise<string> {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: 2048,
     }),
   });
   if (!res.ok) {
@@ -106,9 +106,10 @@ async function getOpenRouterResponse(prompt: string): Promise<string> {
   return text.trim();
 }
 
-export async function getAIResponse(prompt: string, image?: ImageInput): Promise<string> {
+export async function getAIResponse(prompt: string, image?: ImageInput, history: {role: string; content: string}[] = []): Promise<string> {
   if (apiKey) {
     const client = getClient();
+    const chatHistory = history.map(m => ({ role: m.role === "ai" ? "model" : "user", parts: [{ text: m.content }] }));
     const parts: Part[] = [];
     if (image) {
       parts.push({ inlineData: { data: image.base64, mimeType: image.mimeType } });
@@ -120,9 +121,10 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
         const model = client.getGenerativeModel({
           model: modelName,
           systemInstruction: SYSTEM_PROMPT,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         });
-        const result = await model.generateContent(parts);
+        const chat = model.startChat({ history: chatHistory.slice(0, -1) });
+        const result = await chat.sendMessage(parts);
         const text = result.response.text();
         if (text && text.trim().length > 0) return text.trim();
         throw new Error("Réponse vide du modèle");
