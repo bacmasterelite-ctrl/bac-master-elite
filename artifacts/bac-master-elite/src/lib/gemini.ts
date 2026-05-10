@@ -123,7 +123,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput, history:
           systemInstruction: SYSTEM_PROMPT,
           generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         });
-        const chat = model.startChat({ history: chatHistory.slice(0, -1) });
+        const chat = model.startChat({ history: chatHistory.length > 1 ? chatHistory.slice(0, -1) : [] });
         const result = await chat.sendMessage(parts);
         const text = result.response.text();
         if (text && text.trim().length > 0) return text.trim();
