@@ -215,6 +215,8 @@ export default function Flashcards() {
     );
   }
 
+  const hasMore = offset + 50 < totalCards;
+
   // Marquer comme terminé via useEffect
   useEffect(() => {
     if (remaining.length === 0 && cards.length > 0 && !hasMore && activeSubject) {
@@ -224,7 +226,6 @@ export default function Flashcards() {
   }, [remaining.length, cards.length, hasMore, activeSubject, user?.id]);
 
   const progress = ((known.size + unknown.size) / cards.length) * 100;
-  const hasMore = offset + 50 < totalCards;
 
   // Session terminée
   if (remaining.length === 0) {
