@@ -641,6 +641,13 @@ function HistoriquePage({ onNavigate, userId }: { onNavigate: (p: Page) => void;
 }
 
 function GainsPage({ onNavigate, userId }: { onNavigate: (p: Page) => void; userId: string }) {
+  const [hasWon, setHasWon] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    supabase.from("elite_participations").select("id").eq("user_id", userId).eq("is_winner", true).limit(1)
+      .then(({ data }) => { setHasWon((data ?? []).length > 0); setChecking(false); });
+  }, [userId]);
   const [form, setForm] = useState({ full_name: "", mobile_money_number: "", city: "" });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -662,6 +669,21 @@ function GainsPage({ onNavigate, userId }: { onNavigate: (p: Page) => void; user
     if (err) { setError("Erreur lors de l'envoi. Réessayez."); return; }
     setSent(true);
   };
+
+  if (checking) return (
+    <div className="text-center py-12 text-muted-foreground">Vérification en cours...</div>
+  );
+
+  if (!hasWon) return (
+    <div className="rounded-3xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-8 text-center space-y-4">
+      <div className="text-5xl">🔒</div>
+      <h2 className="text-xl font-black text-amber-700">Accès refusé</h2>
+      <p className="text-muted-foreground text-sm">Vous devez gagner le Défi Survivor pour récupérer des gains.</p>
+      <button onClick={() => onNavigate("conditions")} className="w-full bg-gradient-to-r from-blue-600 to-emerald-500 text-white font-black py-3 rounded-2xl hover:opacity-90 transition-all">
+        Participer au Défi
+      </button>
+    </div>
+  );
 
   if (sent) return (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
