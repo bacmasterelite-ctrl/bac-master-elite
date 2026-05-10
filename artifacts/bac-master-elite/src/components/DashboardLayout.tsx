@@ -37,6 +37,7 @@ const navItems = [
   { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen },
   { href: "/dashboard/leaderboard", label: "Classement", icon: Trophy },
   { href: "/dashboard/parrainage", label: "Parrainage", icon: UsersIcon },
+  { href: "/dashboard/defi-elite", label: "🏆 Défi Elite", icon: Trophy, badge: "NEW" },
   { href: "/dashboard/profile", label: "Profil", icon: UserIcon },
 ];
 
