@@ -393,6 +393,11 @@ export default function Lecon() {
                   Valider la leçon — Faire le quiz
                 </Button>
               )}
+              {isPremium && (
+                <Button onClick={handlePrint} className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700">
+                  <Download className="mr-2 h-4 w-4" /> Sauvegarder en PDF
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
