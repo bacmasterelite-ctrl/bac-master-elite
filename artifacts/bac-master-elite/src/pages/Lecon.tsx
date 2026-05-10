@@ -210,7 +210,7 @@ export default function Lecon() {
   };
 
   const backUrl = subject
-    ? `/dashboard/cours?subject=${encodeURIComponent(subject.toLowerCase())}`
+    ? `/dashboard/cours?subject=${encodeURIComponent(subject)}`
     : "/dashboard/cours";
 
   const handlePrint = () => {
