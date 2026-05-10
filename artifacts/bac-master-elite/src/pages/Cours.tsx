@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLessons, useProfile } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Clock } from "lucide-react";
+import { Search, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Clock, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
@@ -17,6 +17,9 @@ export default function Cours() {
   const { data: lessons = [], isLoading } = useLessons();
   const [query, setQuery] = useState("");
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<{ id: string; name: string } | null>(null);
+  const [themes, setThemes] = useState<{ id: string; name: string; order_index: number }[]>([]);
+  const [themesLoading, setThemesLoading] = useState(false);
   const [lastLessonId, setLastLessonId] = useState<string | null>(null);
   const [lastLessonTitle, setLastLessonTitle] = useState<string | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, "in_progress" | "completed">>({});
@@ -87,16 +90,40 @@ export default function Cours() {
     return map;
   }, [allFiltered]);
 
+  
+  // Charger les thèmes quand on sélectionne une matière
+  useEffect(() => {
+    const subject = subjectFromUrl ?? activeSubject;
+    setThemesLoading(true);
+    supabase
+      .from('themes')
+      .select('id, name, order_index')
+      .eq('subject', subject)
+      .order('order_index')
+      .then(({ data }) => {
+        setThemes(data ?? []);
+        setThemesLoading(false);
+      });
+  }, [activeSubject, subjectFromUrl]);
+
+  // Nombre de leçons par thème
+  const countByTheme = useMemo(() => {
+    const map: Record<string, number> = {};
+    lessons.forEach((l: any) => {
+      if (l.theme_id) map[l.theme_id] = (map[l.theme_id] ?? 0) + 1;
+    });
+    return map;
+  }, [lessons]);
+
   const currentSubject = subjectFromUrl ?? activeSubject;
 
   const filteredLessons = useMemo(() => {
-    if (!currentSubject) return [];
+    if (!currentSubject || !activeTheme) return [];
     return allFiltered.filter((l) => {
       const matiere = l.matiere ?? l.subject ?? "";
       const titre = (l.titre ?? l.title ?? "").toLowerCase();
-      const matchesSubject =
-        normalize(matiere).includes(normalize(currentSubject)) ||
-        normalize(currentSubject).includes(normalize(matiere));
+      const matchesTheme = (l as any).theme_id === activeTheme?.id;
+      const matchesSubject = matchesTheme;
       const matchesText = titre.includes(query.toLowerCase());
       return matchesSubject && matchesText;
     });
@@ -151,6 +178,61 @@ export default function Cours() {
                 );
               })}
             </div>
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  
+  // Écran thèmes
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 pb-10">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (subjectFromUrl) window.history.pushState({}, '', '/dashboard/cours');
+                setActiveSubject(null);
+              }}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" /> Matières
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <button onClick={() => setActiveTheme(null)} className="text-sm text-muted-foreground hover:text-foreground">{currentSubject}</button>
+          <span className="text-muted-foreground">/</span>
+          <h1 className="text-lg font-bold">{activeTheme?.name}</h1>
+          </div>
+          {themesLoading ? (
+            <p className="text-center py-10 text-muted-foreground">Chargement des thèmes...</p>
+          ) : themes.length > 0 ? (
+            <div className="grid gap-3">
+              {themes.map((theme, i) => {
+                const count = countByTheme[theme.id] ?? 0;
+                return (
+                  <motion.button
+                    key={theme.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    onClick={() => setActiveTheme(theme)}
+                    className="flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md hover:border-orange-300 transition-all text-left"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10">
+                      <Layers className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm">{theme.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{count} leçon{count > 1 ? 's' : ''}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </motion.button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center py-10 text-muted-foreground">Aucun thème trouvé.</p>
           )}
         </div>
       </DashboardLayout>
