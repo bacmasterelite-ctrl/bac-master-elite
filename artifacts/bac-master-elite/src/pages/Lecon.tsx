@@ -330,11 +330,7 @@ export default function Lecon() {
                 )}
               </div>
             ) : null}
-            {isPremium && (
-              <Button onClick={handlePrint} className="bg-blue-600 text-white hover:bg-blue-700">
-                <Download className="mr-2 h-4 w-4" /> Sauvegarder en PDF
-              </Button>
-            )}
+
             {!isPremium && (
               <Link href="/dashboard/upgrade">
                 <Button variant="outline" size="sm">
