@@ -128,7 +128,10 @@ function AppRoutes() {
           <TuteurIA />
         </ProtectedRoute>
       </Route>
-      <Route path="/dashboard/upgrade">
+      <Route path="/dashboard/flashcards">
+            <Flashcards />
+          </Route>
+          <Route path="/dashboard/upgrade">
         <ProtectedRoute>
           <Upgrade />
         </ProtectedRoute>
