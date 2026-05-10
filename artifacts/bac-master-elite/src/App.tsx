@@ -30,6 +30,7 @@ import NotFound from "@/pages/not-found";
 const Quiz = lazy(() => import("@/pages/Quiz"));
 const Flashcards = lazy(() => import("@/pages/Flashcards"));
 const Parrainage = lazy(() => import("@/pages/Parrainage"));
+const DefiElite = lazy(() => import("@/pages/DefiElite"));
 import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
@@ -150,6 +151,11 @@ function AppRoutes() {
         <ProtectedRoute>
           <Quiz />
               <Route path="/dashboard/flashcards" component={Flashcards} />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/defi-elite">
+        <ProtectedRoute>
+          <DefiElite />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/parrainage">
