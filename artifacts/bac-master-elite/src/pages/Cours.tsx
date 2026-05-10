@@ -235,7 +235,7 @@ export default function Cours() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => {
-              if (subjectFromUrl) window.history.pushState({}, "", "/dashboard/cours");
+              window.history.pushState({}, "", "/dashboard/cours");
               setActiveSubject(null);
               setActiveTheme(null);
             }}
