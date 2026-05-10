@@ -1,4 +1,8 @@
-import { useSearch } from "wouter";
+import { writeFileSync } from 'fs';
+
+const path = '/home/runner/workspace/artifacts/bac-master-elite/src/pages/Cours.tsx';
+
+const content = `import { useSearch } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -80,7 +84,7 @@ export default function Cours() {
   }, [activeSubject, subjectFromUrl]);
 
   const normalize = (str: string) =>
-    str.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
   const allFiltered = useMemo(() => {
     return lessons.filter((l) => {
@@ -128,7 +132,7 @@ export default function Cours() {
         <div className="space-y-6 pb-10">
           <h1 className="text-2xl font-bold">Cours — Série {serie}</h1>
           {lastLessonId && (
-            <Link href={`/dashboard/lecon/${lastLessonId}`}>
+            <Link href={\`/dashboard/lecon/\${lastLessonId}\`}>
               <div className="flex items-center gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 hover:bg-blue-500/15 transition-colors">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
                   <BookOpen className="h-5 w-5" />
@@ -155,10 +159,10 @@ export default function Cours() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => { setActiveSubject(m); setActiveTheme(null); }}
-                    className={`flex flex-col items-center gap-2 rounded-2xl border border-border ${s.border} border-l-4 bg-card p-4 text-center shadow-sm hover:shadow-md transition-shadow`}
+                    className={\`flex flex-col items-center gap-2 rounded-2xl border border-border \${s.border} border-l-4 bg-card p-4 text-center shadow-sm hover:shadow-md transition-shadow\`}
                   >
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${s.bg}`}>
-                      <s.icon className={`h-6 w-6 ${s.text}`} />
+                    <div className={\`flex h-12 w-12 items-center justify-center rounded-xl \${s.bg}\`}>
+                      <s.icon className={\`h-6 w-6 \${s.text}\`} />
                     </div>
                     <p className="text-sm font-bold">{m}</p>
                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -257,7 +261,7 @@ export default function Cours() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-10"
-            placeholder={`Rechercher dans ${activeTheme.name}...`}
+            placeholder={\`Rechercher dans \${activeTheme.name}...\`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -290,7 +294,7 @@ export default function Cours() {
                     )}
                   </div>
                   <Link
-                    href={`/dashboard/lecon/${lesson.id}`}
+                    href={\`/dashboard/lecon/\${lesson.id}\`}
                     onClick={() => {
                       if (user?.id) {
                         supabase.from("lesson_progress").upsert({
@@ -303,7 +307,7 @@ export default function Cours() {
                       }
                     }}
                   >
-                    <Button className={`w-full justify-between ${isCompleted ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                    <Button className={\`w-full justify-between \${isCompleted ? "bg-emerald-600 hover:bg-emerald-700" : ""}\`}>
                       {isCompleted ? "Revoir" : isInProgress ? "Continuer" : "Commencer"}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -318,4 +322,7 @@ export default function Cours() {
       </div>
     </DashboardLayout>
   );
-}
+}`;
+
+writeFileSync(path, content, 'utf8');
+console.log('✅ Cours.tsx réécrit avec succès !');
