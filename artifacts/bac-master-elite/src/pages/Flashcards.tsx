@@ -142,7 +142,8 @@ export default function Flashcards() {
     }
   };
 
-  const handleNext50 = () => {
+  const handleNext50 = async () => {
+    await addPoints(sessionPoints);
     setOffset(o => o + 50);
     setKnown(new Set());
     setUnknown(new Set());
