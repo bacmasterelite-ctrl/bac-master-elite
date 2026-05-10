@@ -215,16 +215,20 @@ export default function Flashcards() {
     );
   }
 
+  // Marquer comme terminé via useEffect
+  useEffect(() => {
+    if (remaining.length === 0 && cards.length > 0 && !hasMore && activeSubject) {
+      setSubjectStatus(prev => ({ ...prev, [activeSubject]: "completed" }));
+      if (user?.id) localStorage.removeItem(STORAGE_KEY(user.id, activeSubject));
+    }
+  }, [remaining.length, cards.length, hasMore, activeSubject, user?.id]);
+
   const progress = ((known.size + unknown.size) / cards.length) * 100;
   const hasMore = offset + 50 < totalCards;
 
   // Session terminée
   if (remaining.length === 0) {
     const isCompleted = !hasMore;
-    if (isCompleted && activeSubject) {
-      setSubjectStatus(prev => ({ ...prev, [activeSubject]: "completed" }));
-      if (user?.id) localStorage.removeItem(STORAGE_KEY(user.id, activeSubject));
-    }
     return (
       <DashboardLayout>
         <div className="mx-auto max-w-md text-center space-y-6 py-16">
