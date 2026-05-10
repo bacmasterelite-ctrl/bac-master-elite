@@ -11,32 +11,30 @@ Règles de fond :
 - Utilise un vocabulaire adapté aux élèves ivoiriens, conformément au programme officiel du BAC ivoirien.
 - Structure : définition courte → explication → exemple concret → conseil pour le BAC.
 - Si la question est hors sujet scolaire, recentre poliment.
-- Ne tronque JAMAIS ta réponse, termine toujours ton explication complètement.
+- Limite tes réponses à ~300 mots sauf si l'élève demande un développement.
 
 Règles spécifiques aux PHOTOS d'exercices ou de cours :
 - Décris d'abord ce que tu vois dans la photo (l'énoncé, le schéma, la formule…).
 - Identifie clairement la matière et le type d'exercice.
-- Explique la **méthode de résolution étape par étape**.
-- Donne des **indices** et des questions guidantes pour que l'élève trouve par lui-même.
+- Explique la **méthode de résolution étape par étape**, sans donner immédiatement le résultat final.
+- Donne des **indices** et des questions guidantes pour que l'élève trouve par lui-même ("À ton avis, que faut-il calculer en premier ?").
 - Termine en proposant à l'élève de te donner sa tentative pour la corriger.
+- Si l'image est floue ou illisible, demande poliment une photo plus nette.
 
-Règles de mise en forme :
-- Utilise du Markdown propre.
+Règles de mise en forme (TRÈS IMPORTANT) :
+- Utilise du Markdown propre — il sera rendu visuellement, donc ne mets JAMAIS de symboles bruts visibles.
 - Titres avec ## (jamais #), sous-titres avec ###.
+- Listes à puces avec "- " et listes numérotées avec "1. ".
 - **Gras** pour les mots-clés, *italique* pour les nuances.
-- Mets les formules courtes entre backticks.
-- Sépare les sections par une ligne vide.`;
+- Mets les formules courtes entre backticks : \`f(x) = 2x + 1\`. Pour un calcul long, utilise un bloc de code.
+- N'utilise PAS de tableaux complexes ni de LaTeX brut ($...$) — préfère du texte simple.
+- Sépare les sections par une ligne vide pour une lecture aérée.`;
 
 const MODEL_CHAIN = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
 
 export type ImageInput = {
   base64: string;
   mimeType: string;
-};
-
-export type HistoryMessage = {
-  role: string;
-  content: string;
 };
 
 let cachedClient: GoogleGenerativeAI | null = null;
@@ -50,12 +48,8 @@ function getClient() {
   return cachedClient;
 }
 
-async function getGroqResponse(prompt: string, history: HistoryMessage[] = []): Promise<string> {
+async function getGroqResponse(prompt: string): Promise<string> {
   if (!groqKey) throw new Error("Clé Groq absente");
-  const historyMessages = history.map(m => ({
-    role: m.role === "ai" ? "assistant" : "user",
-    content: m.content,
-  }));
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -66,11 +60,10 @@ async function getGroqResponse(prompt: string, history: HistoryMessage[] = []): 
       model: "llama3-8b-8192",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        ...historyMessages,
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 1024,
     }),
   });
   if (!res.ok) {
@@ -83,12 +76,8 @@ async function getGroqResponse(prompt: string, history: HistoryMessage[] = []): 
   return text.trim();
 }
 
-async function getOpenRouterResponse(prompt: string, history: HistoryMessage[] = []): Promise<string> {
+async function getOpenRouterResponse(prompt: string): Promise<string> {
   if (!openrouterKey) throw new Error("Clé OpenRouter absente");
-  const historyMessages = history.map(m => ({
-    role: m.role === "ai" ? "assistant" : "user",
-    content: m.content,
-  }));
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -101,11 +90,10 @@ async function getOpenRouterResponse(prompt: string, history: HistoryMessage[] =
       model: "mistralai/mistral-7b-instruct:free",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        ...historyMessages,
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 1024,
     }),
   });
   if (!res.ok) {
@@ -118,17 +106,9 @@ async function getOpenRouterResponse(prompt: string, history: HistoryMessage[] =
   return text.trim();
 }
 
-export async function getAIResponse(prompt: string, image?: ImageInput, history: HistoryMessage[] = []): Promise<string> {
+export async function getAIResponse(prompt: string, image?: ImageInput): Promise<string> {
   if (apiKey) {
     const client = getClient();
-
-    const chatHistory = history
-      .filter(m => !!(m.content && m.content.trim()))
-      .map(m => ({
-        role: m.role === "ai" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
-
     const parts: Part[] = [];
     if (image) {
       parts.push({ inlineData: { data: image.base64, mimeType: image.mimeType } });
@@ -140,12 +120,9 @@ export async function getAIResponse(prompt: string, image?: ImageInput, history:
         const model = client.getGenerativeModel({
           model: modelName,
           systemInstruction: SYSTEM_PROMPT,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
         });
-        const chat = model.startChat({
-          history: chatHistory.length > 0 ? chatHistory : [],
-        });
-        const result = await chat.sendMessage(parts);
+        const result = await model.generateContent(parts);
         const text = result.response.text();
         if (text && text.trim().length > 0) return text.trim();
         throw new Error("Réponse vide du modèle");
@@ -172,7 +149,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput, history:
   if (groqKey) {
     try {
       console.warn("[Tuteur IA] Bascule vers Groq…");
-      const reply = await getGroqResponse(promptTextOnly, history);
+      const reply = await getGroqResponse(promptTextOnly);
       console.log("[Tuteur IA] ✅ Réponse via Groq");
       return reply;
     } catch (err) {
@@ -183,7 +160,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput, history:
   if (openrouterKey) {
     try {
       console.warn("[Tuteur IA] Bascule vers OpenRouter…");
-      const reply = await getOpenRouterResponse(promptTextOnly, history);
+      const reply = await getOpenRouterResponse(promptTextOnly);
       console.log("[Tuteur IA] ✅ Réponse via OpenRouter");
       return reply;
     } catch (err) {

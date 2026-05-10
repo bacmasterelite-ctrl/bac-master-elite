@@ -193,7 +193,7 @@ export default function TuteurIA() {
       const contextual = `Élève en Série ${serie}. ${
         image ? "Voici une photo qu'il/elle envoie. " : ""
       }Question : ${promptForUser}`;
-      const reply = await getAIResponse(contextual, image, messages.filter(m => !m.error).slice(-8).map(m => ({role: m.role, content: m.content})));
+      const reply = await getAIResponse(contextual, image);
       setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";
