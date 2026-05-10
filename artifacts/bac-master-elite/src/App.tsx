@@ -28,6 +28,7 @@ const Success = lazy(() => import("@/pages/Success"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 import NotFound from "@/pages/not-found";
 const Quiz = lazy(() => import("@/pages/Quiz"));
+const Flashcards = lazy(() => import("@/pages/Flashcards"));
 const Parrainage = lazy(() => import("@/pages/Parrainage"));
 import RefTracker from "@/components/RefTracker";
 
@@ -145,6 +146,7 @@ function AppRoutes() {
       <Route path="/dashboard/quiz">
         <ProtectedRoute>
           <Quiz />
+              <Route path="/dashboard/flashcards" component={Flashcards} />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/parrainage">

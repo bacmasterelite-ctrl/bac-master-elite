@@ -34,6 +34,7 @@ const navItems = [
   { href: "/dashboard/astuces", label: "Astuces BAC", icon: Lightbulb },
   { href: "/dashboard/tuteur-ia", label: "Tuteur IA", icon: Brain, badge: "IA" },
   { href: "/dashboard/quiz", label: "Quiz", icon: Sparkles, badge: "+pts" },
+  { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen },
   { href: "/dashboard/leaderboard", label: "Classement", icon: Trophy },
   { href: "/dashboard/parrainage", label: "Parrainage", icon: UsersIcon },
   { href: "/dashboard/profile", label: "Profil", icon: UserIcon },
