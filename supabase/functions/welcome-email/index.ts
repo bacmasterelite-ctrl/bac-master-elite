@@ -9,11 +9,15 @@ serve(async (req) => {
   const name = user.raw_user_meta_data?.full_name || "étudiant(e)"
   const id = user.id
 
-  await fetch("https://api.resend.com/emails", {
+  if (!email) {
+    return new Response(JSON.stringify({ error: "no email" }), { status: 400 })
+  }
+
+  const resendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       from: "BAC Master Elite <onboarding@resend.dev>",
@@ -26,14 +30,14 @@ serve(async (req) => {
           </div>
           <div style="padding:32px;background:#f9fafb">
             <h2>Bienvenue, ${name} !</h2>
-            <p>Tu as maintenant accès à des cours structurés par série et matière pour préparer ton BAC en Côte d'Ivoire.</p>
+            <p>Tu as rejoint la meilleure plateforme de révision pour le BAC ivoirien.</p>
             <ul>
               <li>📚 Cours par série (A, C, D...)</li>
               <li>📝 Exercices et annales</li>
               <li>📊 Suivi de progression</li>
             </ul>
             <a href="${Deno.env.get("SITE_URL")}/cours"
-               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1a56db;color:white;border-radius:6px;text-decoration:none;font-weight:bold">
+              style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1a56db;color:white;border-radius:6px;text-decoration:none;font-weight:bold">
               Commencer à réviser →
             </a>
           </div>
@@ -45,10 +49,14 @@ serve(async (req) => {
     })
   })
 
+  const resendData = await resendRes.json()
+  console.log("Resend response:", JSON.stringify(resendData))
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   )
+
   await supabase.from("profiles").update({ welcome_email_sent: true }).eq("id", id)
 
   return new Response(JSON.stringify({ ok: true }), { status: 200 })
