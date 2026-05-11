@@ -20,7 +20,7 @@ serve(async (req) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "BAC Master Elite <onboarding@resend.dev>",
+      from: "BAC Master Elite <noreply@bac-master-elite.com>",
       to: email,
       subject: "🎓 Bienvenue sur BAC Master Elite !",
       html: `
