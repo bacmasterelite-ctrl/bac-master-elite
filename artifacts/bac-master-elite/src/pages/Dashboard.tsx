@@ -28,6 +28,7 @@ import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import DefiChallengeBanner from "@/components/DefiChallengeBanner";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import {
   useExercises,
@@ -278,6 +279,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+      <DefiChallengeBanner />
         {/* Hero */}
         <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl bg-hero-gradient p-6 text-white sm:p-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
