@@ -1,14 +1,27 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, CheckCircle2, Clock, Loader2, PenLine, Star, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Loader2, Star, ChevronRight, Trophy, RotateCcw } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useExercises, type Exercise } from "@/lib/queries";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
+
+interface QcmQuestion {
+  id: string;
+  exercise_id: string;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: "A" | "B" | "C" | "D";
+  explanation: string;
+  position: number;
+}
 
 function pickString(record: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) {
@@ -17,7 +30,6 @@ function pickString(record: Record<string, unknown>, ...keys: string[]): string 
   }
   return "";
 }
-
 function pickNumber(record: Record<string, unknown>, ...keys: string[]): number | null {
   for (const k of keys) {
     const v = record[k];
@@ -25,6 +37,9 @@ function pickNumber(record: Record<string, unknown>, ...keys: string[]): number 
   }
   return null;
 }
+
+const OPTION_LABELS = ["A", "B", "C", "D"] as const;
+const OPTION_KEYS = ["option_a", "option_b", "option_c", "option_d"] as const;
 
 const difficultyColor: Record<string, string> = {
   facile: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
@@ -37,68 +52,109 @@ export default function Exercice() {
   const exerciseId = params.id;
   const { user } = useAuth();
   const { data: exercises = [], isLoading } = useExercises();
-  const [userAnswer, setUserAnswer] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
+
+  const [questions, setQuestions] = useState<QcmQuestion[]>([]);
+  const [qcmLoading, setQcmLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [qcmDone, setQcmDone] = useState(false);
+  const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [selfEval, setSelfEval] = useState<"correct" | "wrong" | null>(null);
+  const [alreadyDoneAnswers, setAlreadyDoneAnswers] = useState<Record<string, string>>({});
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
     [exercises, exerciseId],
   );
 
-  // Vérifier si déjà complété
+  // Charger les questions QCM
+  useEffect(() => {
+    if (!exerciseId) return;
+    setQcmLoading(true);
+    supabase
+      .from("exercise_qcm")
+      .select("*")
+      .eq("exercise_id", exerciseId)
+      .order("position", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) setQuestions(data as QcmQuestion[]);
+        setQcmLoading(false);
+      });
+  }, [exerciseId]);
+
+  // Vérifier progression existante
   useEffect(() => {
     if (!user?.id || !exerciseId) return;
     supabase
       .from("user_exercise_progress")
-      .select("status, user_answer, completed")
+      .select("status, qcm_answers, qcm_score, completed")
       .eq("user_id", user.id)
       .eq("exercise_id", exerciseId)
       .single()
       .then(({ data }) => {
         if (data?.completed === true || data?.status === "completed") {
           setCompleted(true);
-          setSubmitted(true);
-          setShowSolution(true);
-          if (data.user_answer) setUserAnswer(data.user_answer);
+          setQcmDone(true);
+          setScore(data.qcm_score ?? 0);
+          if (data.qcm_answers) setAlreadyDoneAnswers(data.qcm_answers);
         }
       });
   }, [user?.id, exerciseId]);
 
-  const handleSubmit = () => {
-    if (!userAnswer.trim()) return;
-    setSubmitted(true);
-    setShowSolution(true);
-    // Sauvegarder la réponse
-    if (user?.id && exerciseId) {
-      supabase.from("user_exercise_progress").upsert({
-        user_id: user.id,
-        exercise_id: exerciseId,
-        status: "in_progress",
-        user_answer: userAnswer,
-      }, { onConflict: "user_id,exercise_id" }).then(({error}) => { if(error) console.error("UEP error:", error); });
+  const currentQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
+  const isLastQuestion = currentIndex === totalQuestions - 1;
+  const selectedForCurrent = selectedAnswers[currentIndex];
+
+  const handleSelectOption = (label: string) => {
+    if (showExplanation) return;
+    setSelectedAnswers((prev) => ({ ...prev, [currentIndex]: label }));
+    setShowExplanation(true);
+  };
+
+  const handleNext = () => {
+    setShowExplanation(false);
+    if (isLastQuestion) {
+      // Calculer score final
+      const finalScore = questions.reduce((acc, q, i) => {
+        return selectedAnswers[i] === q.correct_answer ? acc + 1 : acc;
+      }, 0);
+      setScore(finalScore);
+      setQcmDone(true);
+      setCompleted(true);
+      // Sauvegarder
+      if (user?.id && exerciseId) {
+        const answersMap: Record<string, string> = {};
+        questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
+        supabase.from("user_exercise_progress").upsert({
+          user_id: user.id,
+          exercise_id: exerciseId,
+          status: "completed",
+          qcm_score: finalScore,
+          qcm_answers: answersMap,
+          score: Math.round((finalScore / totalQuestions) * 100),
+          completed: true,
+          completed_at: new Date().toISOString(),
+        }, { onConflict: "user_id,exercise_id" });
+      }
+    } else {
+      setCurrentIndex((i) => i + 1);
     }
   };
 
-  const handleSelfEval = (result: "correct" | "wrong") => {
-    setSelfEval(result);
-    setCompleted(true);
-    if (user?.id && exerciseId) {
-      supabase.from("user_exercise_progress").upsert({
-        user_id: user.id,
-        exercise_id: exerciseId,
-        status: "completed",
-        user_answer: userAnswer,
-        score: result === "correct" ? 100 : 40,
-        completed: true,
-        completed_at: new Date().toISOString(),
-      }, { onConflict: "user_id,exercise_id" }).then(({error}) => { if(error) console.error("UEP complete error:", error); });
-    }
+  const handleRestart = () => {
+    setSelectedAnswers({});
+    setCurrentIndex(0);
+    setShowExplanation(false);
+    setQcmDone(false);
+    setCompleted(false);
+    setScore(0);
   };
 
-  if (isLoading) {
+  const isCorrect = selectedForCurrent === currentQuestion?.correct_answer;
+
+  if (isLoading || qcmLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-20">
@@ -114,9 +170,7 @@ export default function Exercice() {
         <div className="mx-auto max-w-xl space-y-4 py-16 text-center">
           <h1 className="text-2xl font-bold">Exercice introuvable</h1>
           <Link href="/dashboard/exercices">
-            <Button className="rounded-full">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Retour aux exercices
-            </Button>
+            <Button className="rounded-full"><ArrowLeft className="mr-2 h-4 w-4" /> Retour</Button>
           </Link>
         </div>
       </DashboardLayout>
@@ -126,15 +180,112 @@ export default function Exercice() {
   const r = exercise as Record<string, unknown>;
   const title = pickString(r, "titre", "title") || "Exercice";
   const subject = pickString(r, "matiere", "subject") || "Général";
-  const difficulty = (pickString(r, "difficulty", "difficulte") || "Moyen").toLowerCase();
+  const difficulty = (pickString(r, "difficulty", "difficulte") || "moyen").toLowerCase();
   const points = pickNumber(r, "points") ?? 10;
-  const duration = pickString(r, "duration", "duree") || "15 min";
-  const statement = pickString(r, "enonce", "statement", "question", "consigne", "description");
-  const solution = pickString(r, "corrige", "correction", "solution", "answer", "reponse");
 
+  // ── Résultats finaux
+  if (qcmDone) {
+    const percent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    const passed = percent >= 50;
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-2xl space-y-6 pb-12">
+          <Link href="/dashboard/exercices">
+            <Button variant="ghost" size="sm" className="rounded-full">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Tous les exercices
+            </Button>
+          </Link>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-3xl border border-border bg-card p-8 shadow-sm text-center space-y-6"
+          >
+            <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${passed ? "bg-emerald-500/15" : "bg-rose-500/15"}`}>
+              {passed ? <Trophy className="h-10 w-10 text-emerald-600" /> : <RotateCcw className="h-10 w-10 text-rose-500" />}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{passed ? "Bravo !" : "Continue tes efforts !"}</h1>
+              <p className="mt-1 text-muted-foreground text-sm">{title}</p>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-5xl font-black">{score}</span>
+              <span className="text-2xl text-muted-foreground font-semibold">/ {totalQuestions}</span>
+            </div>
+            <div className="w-full rounded-full bg-muted h-3 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${percent}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className={`h-full rounded-full ${passed ? "bg-emerald-500" : "bg-rose-500"}`}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">{percent}% de bonnes réponses</p>
+
+            {/* Récap par question */}
+            <div className="space-y-3 text-left pt-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Récapitulatif</p>
+              {questions.map((q, i) => {
+                const userAns = selectedAnswers[i];
+                const ok = userAns === q.correct_answer;
+                return (
+                  <div key={q.id} className={`rounded-xl border p-3 ${ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"}`}>
+                    <div className="flex items-start gap-2">
+                      {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" /> : <XCircle className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{q.question}</p>
+                        {!ok && (
+                          <p className="text-xs text-rose-600 mt-1">
+                            Ta réponse : <strong>{userAns}</strong> — Bonne réponse : <strong>{q.correct_answer}</strong>
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1 italic">{q.explanation}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button onClick={handleRestart} variant="outline" className="flex-1 rounded-xl">
+                <RotateCcw className="mr-2 h-4 w-4" /> Recommencer
+              </Button>
+              <Link href="/dashboard/exercices" className="flex-1">
+                <Button className="w-full rounded-xl bg-hero-gradient text-white">
+                  Autres exercices <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Pas de QCM disponible
+  if (questions.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-2xl space-y-6 pb-12">
+          <Link href="/dashboard/exercices">
+            <Button variant="ghost" size="sm" className="rounded-full">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Tous les exercices
+            </Button>
+          </Link>
+          <div className="rounded-3xl border border-border bg-card p-8 text-center space-y-3">
+            <p className="text-lg font-bold">QCM bientôt disponible</p>
+            <p className="text-sm text-muted-foreground">Les questions pour cet exercice arrivent prochainement.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── QCM en cours
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-3xl space-y-6 pb-12">
+      <div className="mx-auto max-w-2xl space-y-6 pb-12">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <Link href="/dashboard/exercices">
             <Button variant="ghost" size="sm" className="rounded-full">
@@ -153,125 +304,123 @@ export default function Exercice() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8 space-y-6"
-        >
-          {/* En-tête */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">{subject}</p>
-            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{title}</h1>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{duration}</span>
-              <span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500" />{points} pts</span>
-            </div>
+        {/* Titre + meta */}
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">{subject}</p>
+          <h1 className="mt-1 text-xl font-bold sm:text-2xl">{title}</h1>
+          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~15 min</span>
+            <span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500" />{points} pts</span>
           </div>
+        </div>
 
-          {/* Énoncé */}
-          <div className="border-t pt-6">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <PenLine className="h-4 w-4" /> Énoncé
-            </h2>
-            {statement ? (
-              <article className="prose prose-sm max-w-none dark:prose-invert sm:prose-base">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{statement}</ReactMarkdown>
-              </article>
-            ) : (
-              <p className="text-sm text-muted-foreground">L'énoncé sera bientôt disponible.</p>
-            )}
+        {/* Barre de progression */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Question {currentIndex + 1} sur {totalQuestions}</span>
+            <span>{currentIndex}/{totalQuestions} complétées</span>
           </div>
+          <div className="w-full rounded-full bg-muted h-2 overflow-hidden">
+            <motion.div
+              animate={{ width: `${((currentIndex) / totalQuestions) * 100}%` }}
+              transition={{ duration: 0.4 }}
+              className="h-full rounded-full bg-blue-500"
+            />
+          </div>
+        </div>
 
-          {/* Zone de réponse */}
-          {!submitted ? (
-            <div className="border-t pt-6 space-y-3">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                ✍️ Ta réponse
-              </h2>
-              <p className="text-xs text-muted-foreground">Tu dois donner ta réponse avant de voir le corrigé.</p>
-              <textarea
-                className="w-full min-h-[140px] rounded-xl border border-border bg-background p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="Écris ta réponse ici..."
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-              />
-              <Button
-                className="w-full rounded-xl bg-hero-gradient text-white hover:opacity-90"
-                onClick={handleSubmit}
-                disabled={!userAnswer.trim()}
-              >
-                Soumettre ma réponse
-              </Button>
+        {/* Carte question */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.25 }}
+            className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5"
+          >
+            {/* Question */}
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-600">
+                {currentIndex + 1}
+              </span>
+              <p className="text-base font-semibold leading-snug pt-0.5">{currentQuestion.question}</p>
             </div>
-          ) : (
-            <div className="border-t pt-6 space-y-4">
-              {/* Réponse soumise */}
-              <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">Ta réponse</p>
-                <p className="text-sm whitespace-pre-wrap">{userAnswer}</p>
-              </div>
 
-              {/* Corrigé */}
-              {showSolution && (
+            {/* Options */}
+            <div className="space-y-2.5">
+              {OPTION_LABELS.map((label, i) => {
+                const text = currentQuestion[OPTION_KEYS[i]];
+                const isSelected = selectedForCurrent === label;
+                const isCorrectOption = label === currentQuestion.correct_answer;
+                let optionStyle = "border-border bg-background hover:bg-muted/50 hover:border-blue-400 cursor-pointer";
+                if (showExplanation) {
+                  if (isCorrectOption) optionStyle = "border-emerald-500 bg-emerald-500/10 cursor-default";
+                  else if (isSelected && !isCorrectOption) optionStyle = "border-rose-500 bg-rose-500/10 cursor-default";
+                  else optionStyle = "border-border bg-background opacity-50 cursor-default";
+                } else if (isSelected) {
+                  optionStyle = "border-blue-500 bg-blue-500/10 cursor-pointer";
+                }
+                return (
+                  <button
+                    key={label}
+                    onClick={() => handleSelectOption(label)}
+                    disabled={showExplanation}
+                    className={`w-full flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${optionStyle}`}
+                  >
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold border ${
+                      showExplanation && isCorrectOption ? "bg-emerald-500 text-white border-emerald-500" :
+                      showExplanation && isSelected && !isCorrectOption ? "bg-rose-500 text-white border-rose-500" :
+                      isSelected ? "bg-blue-500 text-white border-blue-500" : "border-border text-muted-foreground"
+                    }`}>
+                      {label}
+                    </span>
+                    <span className="text-sm">{text}</span>
+                    {showExplanation && isCorrectOption && (
+                      <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600 shrink-0" />
+                    )}
+                    {showExplanation && isSelected && !isCorrectOption && (
+                      <XCircle className="ml-auto h-4 w-4 text-rose-500 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Explication */}
+            <AnimatePresence>
+              {showExplanation && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5"
+                  exit={{ opacity: 0 }}
+                  className={`rounded-xl border p-4 ${isCorrect ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}
                 >
-                  <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-700">
-                    <CheckCircle2 className="h-4 w-4" /> Corrigé détaillé
-                  </h2>
-                  {solution ? (
-                    <article className="prose prose-sm max-w-none dark:prose-invert sm:prose-base">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{solution}</ReactMarkdown>
-                    </article>
+                  <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${isCorrect ? "text-emerald-700" : "text-amber-700"}`}>
+                    {isCorrect ? "✅ Bonne réponse !" : "💡 À retenir"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Bouton suivant */}
+            {showExplanation && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Button
+                  onClick={handleNext}
+                  className="w-full rounded-xl bg-hero-gradient text-white hover:opacity-90"
+                >
+                  {isLastQuestion ? (
+                    <><Trophy className="mr-2 h-4 w-4" /> Voir mes résultats</>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Le corrigé sera publié prochainement.</p>
+                    <>Question suivante <ChevronRight className="ml-2 h-4 w-4" /></>
                   )}
-                </motion.div>
-              )}
-
-              {/* Auto-évaluation */}
-              {!completed && selfEval === null && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border p-4 space-y-3"
-                >
-                  <p className="text-sm font-semibold text-center">Après avoir vu le corrigé, comment tu t'en es sorti ?</p>
-                  <div className="flex gap-3">
-                    <Button
-                      className="flex-1 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600"
-                      onClick={() => handleSelfEval("correct")}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> J'ai trouvé !
-                    </Button>
-                    <Button
-                      className="flex-1 rounded-xl bg-rose-500 text-white hover:bg-rose-600"
-                      onClick={() => handleSelfEval("wrong")}
-                    >
-                      <XCircle className="mr-2 h-4 w-4" /> Pas encore
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Message après auto-évaluation */}
-              {selfEval === "correct" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl bg-emerald-500/10 p-4 text-center">
-                  <p className="font-bold text-emerald-700">🎉 Excellent travail !</p>
-                  <p className="mt-1 text-sm text-emerald-600">Tu maîtrises ce concept. Continue sur cette lancée, le BAC est à ta portée !</p>
-                </motion.div>
-              )}
-              {selfEval === "wrong" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl bg-amber-500/10 p-4 text-center">
-                  <p className="font-bold text-amber-700">💪 Ne lâche pas !</p>
-                  <p className="mt-1 text-sm text-amber-600">Chaque erreur est une progression. Relis le corrigé, comprends la méthode et réessaie !</p>
-                </motion.div>
-              )}
-            </div>
-          )}
-        </motion.div>
+                </Button>
+              </motion.div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );
