@@ -1,12 +1,47 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect } from "react";
-import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft } from "lucide-react";
+import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft, Zap, Target, Flame } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useExercises, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { supabase } from "@/lib/supabase";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
+
+const LEVELS = [
+  {
+    key: "facile",
+    label: "Facile",
+    description: "Notions de base, questions directes",
+    icon: Zap,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-600",
+    border: "border-emerald-500/30",
+    badge: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+  },
+  {
+    key: "moyen",
+    label: "Moyen",
+    description: "Approfondissement, raisonnement",
+    icon: Target,
+    bg: "bg-amber-500/10",
+    text: "text-amber-600",
+    border: "border-amber-500/30",
+    badge: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+  },
+  {
+    key: "difficile",
+    label: "Difficile",
+    description: "Niveau BAC, analyse et synthèse",
+    icon: Flame,
+    bg: "bg-rose-500/10",
+    text: "text-rose-600",
+    border: "border-rose-500/30",
+    badge: "bg-rose-500/10 text-rose-700 border-rose-500/20",
+  },
+] as const;
+
+type Level = "facile" | "moyen" | "difficile";
 
 const difficultyColor: Record<string, string> = {
   facile: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
@@ -19,12 +54,12 @@ export default function Exercices() {
   const { data: profile } = useProfile(user?.id);
   const { data: exercises = [], isLoading } = useExercises();
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [activeLevel, setActiveLevel] = useState<Level | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, "in_progress" | "completed">>({});
 
   const serie = (profile?.serie ?? "D").toUpperCase();
   const allowedSubjects = subjectsForSerie(serie);
 
-  // Charger les statuts des exercices
   useEffect(() => {
     if (!user?.id) return;
     supabase
@@ -50,7 +85,7 @@ export default function Exercices() {
         const r = e as Record<string, unknown>;
         const exSerie = ((r.serie as string) ?? "").toUpperCase();
         if (!exSerie) return true;
-        return exSerie.split("/").map(s => s.trim()).includes(serie);
+        return exSerie.split("/").map((s) => s.trim()).includes(serie);
       })
       .map((e) => {
         const r = e as Record<string, unknown>;
@@ -60,7 +95,7 @@ export default function Exercices() {
           id,
           titre: (r.title as string) ?? (r.titre as string) ?? "Exercice",
           matiere: (r.subject as string) ?? (r.matiere as string) ?? "Général",
-          difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "moyen").toLowerCase(),
+          difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "moyen").toLowerCase() as Level,
           status,
           points: (r.points as number) ?? 10,
         };
@@ -69,13 +104,11 @@ export default function Exercices() {
 
   const countBySubject = useMemo(() => {
     const map: Record<string, number> = {};
-    allItems.forEach((ex) => {
-      map[ex.matiere] = (map[ex.matiere] ?? 0) + 1;
-    });
+    allItems.forEach((ex) => { map[ex.matiere] = (map[ex.matiere] ?? 0) + 1; });
     return map;
   }, [allItems]);
 
-  const filteredItems = useMemo(() => {
+  const itemsBySubject = useMemo(() => {
     if (!activeSubject) return [];
     return allItems.filter((ex) =>
       normalize(ex.matiere).includes(normalize(activeSubject)) ||
@@ -83,6 +116,18 @@ export default function Exercices() {
     );
   }, [allItems, activeSubject]);
 
+  const countByLevel = useMemo(() => {
+    const map: Record<string, number> = {};
+    itemsBySubject.forEach((ex) => { map[ex.difficulty] = (map[ex.difficulty] ?? 0) + 1; });
+    return map;
+  }, [itemsBySubject]);
+
+  const filteredItems = useMemo(() => {
+    if (!activeSubject || !activeLevel) return [];
+    return itemsBySubject.filter((ex) => ex.difficulty === activeLevel);
+  }, [itemsBySubject, activeSubject, activeLevel]);
+
+  // ── ÉCRAN 1 : Matières
   if (!activeSubject) {
     return (
       <DashboardLayout>
@@ -109,7 +154,7 @@ export default function Exercices() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    onClick={() => setActiveSubject(m)}
+                    onClick={() => { setActiveSubject(m); setActiveLevel(null); }}
                     className={`flex flex-col items-center gap-2 rounded-2xl border border-border ${s.border} border-l-4 bg-card p-4 text-center shadow-sm hover:shadow-md transition-shadow`}
                   >
                     <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${s.bg}`}>
@@ -130,18 +175,104 @@ export default function Exercices() {
     );
   }
 
+  // ── ÉCRAN 2 : Niveaux
+  if (!activeLevel) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 pb-10">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveSubject(null)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" /> Matières
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <h1 className="text-lg font-bold">{activeSubject}</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">Choisissez votre niveau de difficulté.</p>
+          <div className="grid gap-4">
+            {LEVELS.map((level, i) => {
+              const count = countByLevel[level.key] ?? 0;
+              const Icon = level.icon;
+              return (
+                <motion.button
+                  key={level.key}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  onClick={() => setActiveLevel(level.key)}
+                  disabled={count === 0}
+                  className={`flex items-center gap-4 rounded-2xl border-2 bg-card p-5 text-left shadow-sm transition-all
+                    ${count === 0
+                      ? "opacity-40 cursor-not-allowed border-border"
+                      : `hover:shadow-md hover:scale-[1.01] ${level.border} cursor-pointer`
+                    }`}
+                >
+                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${level.bg}`}>
+                    <Icon className={`h-7 w-7 ${level.text}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-base">{level.label}</p>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${level.badge}`}>
+                        {level.key}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">{level.description}</p>
+                    <p className={`text-xs font-semibold mt-1 ${count === 0 ? "text-muted-foreground" : level.text}`}>
+                      {count === 0 ? "Aucun exercice disponible" : `${count} exercice${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""}`}
+                    </p>
+                  </div>
+                  {count > 0 && <ArrowRight className={`h-5 w-5 shrink-0 ${level.text}`} />}
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── ÉCRAN 3 : Exercices
+  const currentLevel = LEVELS.find((l) => l.key === activeLevel)!;
+  const LevelIcon = currentLevel.icon;
+
   return (
     <DashboardLayout>
       <div className="space-y-6 pb-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setActiveSubject(null)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => { setActiveSubject(null); setActiveLevel(null); }}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="h-4 w-4" /> Matières
+            Matières
           </button>
           <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-bold">{activeSubject}</h1>
+          <button
+            onClick={() => setActiveLevel(null)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {activeSubject}
+          </button>
+          <span className="text-muted-foreground">/</span>
+          <div className="flex items-center gap-1.5">
+            <LevelIcon className={`h-4 w-4 ${currentLevel.text}`} />
+            <h1 className="text-sm font-bold">{currentLevel.label}</h1>
+          </div>
+        </div>
+
+        <div className={`flex items-center gap-3 rounded-xl border ${currentLevel.border} ${currentLevel.bg} p-4`}>
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${currentLevel.bg}`}>
+            <LevelIcon className={`h-5 w-5 ${currentLevel.text}`} />
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${currentLevel.text}`}>{currentLevel.label}</p>
+            <p className="text-xs text-muted-foreground">{currentLevel.description}</p>
+          </div>
+          <span className={`ml-auto text-xs font-bold ${currentLevel.text}`}>
+            {filteredItems.length} exercice{filteredItems.length > 1 ? "s" : ""}
+          </span>
         </div>
 
         {filteredItems.length === 0 ? (
@@ -165,7 +296,7 @@ export default function Exercices() {
                   transition={{ delay: i * 0.04 }}
                   className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center"
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isCompleted ? "bg-emerald-500/15 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isCompleted ? "bg-emerald-500/15 text-emerald-600" : currentLevel.bg + " " + currentLevel.text}`}>
                     {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : <PenLine className="h-5 w-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
