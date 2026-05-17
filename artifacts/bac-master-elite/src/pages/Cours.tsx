@@ -73,7 +73,7 @@ export default function Cours() {
       supabase.from("themes").select("id, name, order_index").eq("subject", subjectData.id).order("order_index").then(({ data }) => {
         setThemes(data ?? []);
         setThemesLoading(false);
-      });
+      }).catch(() => { setThemes([]); setThemesLoading(false); });
     });
   }, [activeSubject, subjectFromUrl]);
 
