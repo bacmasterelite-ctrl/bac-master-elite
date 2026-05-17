@@ -69,8 +69,9 @@ export default function Cours() {
     if (!subject) { setThemes([]); return; }
     setThemesLoading(true);
     supabase
-      .from("subjects").select("id").eq("title", subject).single().then(({ data: subjectData }) => {
-      supabase.from("themes").select("id, name, order_index").eq("subject", subjectData.id).order("order_index").then(({ data }) => {
+      .from("subjects").select("id").eq("title", subject).then(({ data: subjectRows }) => {
+      const ids = subjectRows.map((r: any) => r.id);
+      supabase.from("themes").select("id, name, order_index").in("subject", ids).order("order_index").then(({ data }) => {
         setThemes(data ?? []);
         setThemesLoading(false);
       }).catch(() => { setThemes([]); setThemesLoading(false); });
