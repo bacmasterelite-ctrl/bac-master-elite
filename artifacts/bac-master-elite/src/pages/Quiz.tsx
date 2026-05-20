@@ -258,7 +258,7 @@ export default function Quiz() {
 
               {limitReached ? (
                 <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/30">
-                  <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+                  
               <div className="flex items-start gap-3">
                     <Lock className="h-5 w-5 shrink-0 text-amber-600" />
                     <div className="flex-1">
@@ -312,9 +312,9 @@ export default function Quiz() {
                     disabled={incrementUsage.isPending}
                     className={cn("w-full rounded-2xl border-2 p-4 text-left transition-all hover:scale-[1.01] active:scale-100", c.bg, c.border)}
                   >
-                    <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+                    
               <div className="flex items-center justify-between">
-                      <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+                      
               <div className="flex items-center gap-3">
                         <span className="text-2xl">{c.emoji}</span>
                         <div>
@@ -344,7 +344,7 @@ export default function Quiz() {
               exit={{ opacity: 0, x: -24 }}
               className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
             >
-              <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+              
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                 <span>
                   Question {currentIdx + 1} / {questions.length}
