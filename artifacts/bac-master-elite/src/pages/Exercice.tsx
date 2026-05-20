@@ -3,10 +3,10 @@ import { Link, useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, Loader2, Star, ChevronRight, Trophy, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, Loader2, Star, ChevronRight, Trophy, RotateCcw, Skull, PenLine, Eye, Lock } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { useExercises, type Exercise } from "@/lib/queries";
+import { useExercises, usePremiumStatus, type Exercise } from "@/lib/queries";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 
@@ -20,6 +20,15 @@ interface QcmQuestion {
   option_d: string;
   correct_answer: "A" | "B" | "C" | "D";
   explanation: string;
+  position: number;
+}
+
+interface OpenQuestion {
+  id: string;
+  exercise_id: string;
+  question: string;
+  expected_answer: string;
+  hint: string;
   position: number;
 }
 
@@ -45,12 +54,14 @@ const difficultyColor: Record<string, string> = {
   facile: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
   moyen: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   difficile: "bg-rose-500/10 text-rose-700 border-rose-500/20",
+  extreme: "bg-purple-500/10 text-purple-700 border-purple-500/20",
 };
 
 export default function Exercice() {
   const params = useParams<{ id: string }>();
   const exerciseId = params.id;
   const { user } = useAuth();
+  const { isPremium } = usePremiumStatus(user?.id);
   const { data: exercises = [], isLoading } = useExercises();
 
   const [questions, setQuestions] = useState<QcmQuestion[]>([]);
@@ -61,7 +72,13 @@ export default function Exercice() {
   const [qcmDone, setQcmDone] = useState(false);
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [alreadyDoneAnswers, setAlreadyDoneAnswers] = useState<Record<string, string>>({});
+  const [openQuestions, setOpenQuestions] = useState<OpenQuestion[]>([]);
+  const [openLoading, setOpenLoading] = useState(false);
+  const [openIndex, setOpenIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
+  const [showCorrection, setShowCorrection] = useState<Record<number, boolean>>({});
+  const [showHint, setShowHint] = useState<Record<number, boolean>>({});
+  const [extremePhase, setExtremePhase] = useState<"qcm" | "open" | "done">("qcm");
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
@@ -97,10 +114,25 @@ export default function Exercice() {
           setCompleted(true);
           setQcmDone(true);
           setScore(data.qcm_score ?? 0);
-          if (data.qcm_answers) setAlreadyDoneAnswers(data.qcm_answers);
+
         }
       });
   }, [user?.id, exerciseId]);
+
+  // Charger questions ouvertes
+  useEffect(() => {
+    if (!exerciseId || !isExtreme) return;
+    setOpenLoading(true);
+    supabase
+      .from("exercise_open_questions")
+      .select("*")
+      .eq("exercise_id", exerciseId)
+      .order("position", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) setOpenQuestions(data as OpenQuestion[]);
+        setOpenLoading(false);
+      });
+  }, [exerciseId, isExtreme]);
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
@@ -122,9 +154,11 @@ export default function Exercice() {
       }, 0);
       setScore(finalScore);
       setQcmDone(true);
-      setCompleted(true);
-      // Sauvegarder
-      if (user?.id && exerciseId) {
+      if (isExtreme) {
+        setExtremePhase("open");
+      } else {
+        setCompleted(true);
+        if (user?.id && exerciseId) {
         const answersMap: Record<string, string> = {};
         questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
         supabase.from("user_exercise_progress").upsert({
@@ -137,6 +171,7 @@ export default function Exercice() {
           completed: true,
           completed_at: new Date().toISOString(),
         }, { onConflict: "user_id,exercise_id" });
+        }
       }
     } else {
       setCurrentIndex((i) => i + 1);
@@ -181,6 +216,7 @@ export default function Exercice() {
   const title = pickString(r, "titre", "title") || "Exercice";
   const subject = pickString(r, "matiere", "subject") || "Général";
   const difficulty = (pickString(r, "difficulty", "difficulte") || "moyen").toLowerCase();
+  const isExtreme = difficulty === "extreme";
   const points = pickNumber(r, "points") ?? 10;
 
   // ── Résultats finaux
@@ -257,6 +293,149 @@ export default function Exercice() {
               </Link>
             </div>
           </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+
+  // ── Bloc Premium requis pour Extreme
+  if (isExtreme && !isPremium) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-2xl space-y-6 pb-12">
+          <Link href="/dashboard/exercices">
+            <Button variant="ghost" size="sm" className="rounded-full">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+            </Button>
+          </Link>
+          <div className="rounded-3xl border border-purple-500/30 bg-card p-10 text-center space-y-5 shadow-sm">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-purple-500/10">
+              <Lock className="h-10 w-10 text-purple-600" />
+            </div>
+            <h1 className="text-2xl font-bold">Niveau Extreme 💀</h1>
+            <p className="text-sm text-muted-foreground">Ce niveau combine QCM avancés et questions ouvertes. Réservé aux membres Premium.</p>
+            <Link href="/dashboard/upgrade">
+              <Button className="bg-hero-gradient text-white px-8 rounded-full">👑 Passer Premium</Button>
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Phase Questions Ouvertes (Extreme)
+  if (isExtreme && extremePhase === "open") {
+    const currentOpen = openQuestions[openIndex];
+    const isLastOpen = openIndex === openQuestions.length - 1;
+    const hasAnswered = (userAnswers[openIndex] ?? "").trim().length > 0;
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-2xl space-y-6 pb-12">
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard/exercices">
+              <Button variant="ghost" size="sm" className="rounded-full">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+              </Button>
+            </Link>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600">
+              <Skull className="h-3.5 w-3.5" /> Phase 2 — Questions ouvertes
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-600">{subject}</p>
+            <h1 className="mt-1 text-xl font-bold">{title}</h1>
+            <p className="text-xs text-muted-foreground mt-1">QCM terminé ✅ — Score QCM : {score}/{totalQuestions}</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Question ouverte {openIndex + 1} sur {openQuestions.length}</span>
+            </div>
+            <div className="w-full rounded-full bg-muted h-2 overflow-hidden">
+              <motion.div
+                animate={{ width: `${((openIndex) / openQuestions.length) * 100}%` }}
+                transition={{ duration: 0.4 }}
+                className="h-full rounded-full bg-purple-500"
+              />
+            </div>
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={openIndex}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-3xl border border-purple-500/20 bg-card p-6 shadow-sm space-y-5"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-xs font-bold text-purple-600">
+                  {openIndex + 1}
+                </span>
+                <p className="text-base font-semibold leading-snug pt-0.5">{currentOpen?.question}</p>
+              </div>
+              {currentOpen?.hint && (
+                <div>
+                  <button
+                    onClick={() => setShowHint(prev => ({ ...prev, [openIndex]: !prev[openIndex] }))}
+                    className="text-xs text-amber-600 font-semibold hover:underline"
+                  >
+                    💡 {showHint[openIndex] ? "Masquer l indice" : "Voir l indice"}
+                  </button>
+                  {showHint[openIndex] && (
+                    <div className="mt-2 rounded-xl bg-amber-500/5 border border-amber-500/20 p-3 text-xs text-amber-700">
+                      {currentOpen.hint}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">✍️ Ta réponse</label>
+                <textarea
+                  value={userAnswers[openIndex] ?? ""}
+                  onChange={(e) => setUserAnswers(prev => ({ ...prev, [openIndex]: e.target.value }))}
+                  disabled={showCorrection[openIndex]}
+                  placeholder="Rédigez votre réponse ici..."
+                  rows={6}
+                  className="w-full rounded-xl border border-border bg-background p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/30 disabled:opacity-60"
+                />
+              </div>
+              {hasAnswered && !showCorrection[openIndex] && (
+                <Button
+                  onClick={() => setShowCorrection(prev => ({ ...prev, [openIndex]: true }))}
+                  variant="outline"
+                  className="w-full rounded-xl border-purple-500/30 text-purple-600 hover:bg-purple-500/5"
+                >
+                  <Eye className="mr-2 h-4 w-4" /> Voir la correction
+                </Button>
+              )}
+              {showCorrection[openIndex] && (
+                <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-2">
+                  <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">✅ Correction attendue</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{currentOpen?.expected_answer}</p>
+                </div>
+              )}
+              {showCorrection[openIndex] && (
+                <Button
+                  onClick={() => {
+                    if (isLastOpen) {
+                      setExtremePhase("done");
+                      setCompleted(true);
+                    } else {
+                      setOpenIndex(i => i + 1);
+                    }
+                  }}
+                  className="w-full rounded-xl bg-purple-600 text-white hover:bg-purple-700"
+                >
+                  {isLastOpen ? (
+                    <><Trophy className="mr-2 h-4 w-4" /> Terminer l exercice</>
+                  ) : (
+                    <>Question suivante <ChevronRight className="ml-2 h-4 w-4" /></>
+                  )}
+                </Button>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </DashboardLayout>
     );

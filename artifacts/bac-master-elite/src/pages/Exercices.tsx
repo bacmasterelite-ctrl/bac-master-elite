@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect } from "react";
-import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft, Zap, Target, Flame } from "lucide-react";
+import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft, Zap, Target, Flame, Skull } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useExercises, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
@@ -39,14 +39,25 @@ const LEVELS = [
     border: "border-rose-500/30",
     badge: "bg-rose-500/10 text-rose-700 border-rose-500/20",
   },
+  {
+    key: "extreme",
+    label: "Extrême",
+    description: "QCM + questions ouvertes — Réservé Premium",
+    icon: Skull,
+    bg: "bg-purple-500/10",
+    text: "text-purple-600",
+    border: "border-purple-500/30",
+    badge: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  },
 ] as const;
 
-type Level = "facile" | "moyen" | "difficile";
+type Level = "facile" | "moyen" | "difficile" | "extreme";
 
 const difficultyColor: Record<string, string> = {
   facile: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
   moyen: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   difficile: "bg-rose-500/10 text-rose-700 border-rose-500/20",
+  extreme: "bg-purple-500/10 text-purple-700 border-purple-500/20",
 };
 
 export default function Exercices() {
@@ -98,6 +109,7 @@ export default function Exercices() {
           difficulty: ((r.difficulty as string) ?? (r.difficulte as string) ?? "moyen").toLowerCase() as Level,
           status,
           points: (r.points as number) ?? 10,
+          is_premium: (r.is_premium as boolean) ?? false,
         };
       });
   }, [exercises, serie, progressMap]);
@@ -195,13 +207,14 @@ export default function Exercices() {
             {LEVELS.map((level, i) => {
               const count = countByLevel[level.key] ?? 0;
               const Icon = level.icon;
+              const isExtreme = level.key === "extreme";
               return (
                 <motion.button
                   key={level.key}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  onClick={() => setActiveLevel(level.key)}
+                  onClick={() => setActiveLevel(level.key as Level)}
                   disabled={count === 0}
                   className={`flex items-center gap-4 rounded-2xl border-2 bg-card p-5 text-left shadow-sm transition-all
                     ${count === 0
@@ -213,11 +226,16 @@ export default function Exercices() {
                     <Icon className={`h-7 w-7 ${level.text}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-base">{level.label}</p>
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${level.badge}`}>
                         {level.key}
                       </span>
+                      {isExtreme && (
+                        <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                          👑 Premium
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{level.description}</p>
                     <p className={`text-xs font-semibold mt-1 ${count === 0 ? "text-muted-foreground" : level.text}`}>
@@ -287,6 +305,8 @@ export default function Exercices() {
                 ? "border border-emerald-500 bg-emerald-500/10 text-emerald-700"
                 : isInProgress
                 ? "border border-amber-500 bg-amber-500/10 text-amber-700"
+                : activeLevel === "extreme"
+                ? "bg-purple-600 text-white"
                 : "bg-hero-gradient text-white";
 
               const inner = (
@@ -305,9 +325,14 @@ export default function Exercices() {
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${difficultyColor[ex.difficulty] ?? difficultyColor.moyen}`}>
                         {ex.difficulty.charAt(0).toUpperCase() + ex.difficulty.slice(1)}
                       </span>
+                      {ex.is_premium && (
+                        <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                          👑 Premium
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />~15 min</span>
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />~25 min</span>
                       <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" />{ex.points} pts</span>
                       {isInProgress && (
                         <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
