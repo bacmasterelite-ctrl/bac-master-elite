@@ -61,6 +61,7 @@ export default function Quiz() {
   const [chosen, setChosen] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [answers, setAnswers] = useState<{ correct: boolean }[]>([]);
+  const answersRef = React.useRef<{ correct: boolean }[]>([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
 
@@ -123,18 +124,22 @@ export default function Quiz() {
     setChosen(null);
     setRevealed(false);
     setAnswers([]);
+    answersRef.current = [];
     setQuizId((n) => n + 1);
     setPhase("playing");
   };
 
-  const submitAnswer = (timeout = false) => {
-    if (revealed) return;
+  const submitAnswer = (timeout = false): boolean => {
+    if (revealed) return false;
     const correct = !timeout && chosen === questions[currentIdx].correctIndex;
-    setAnswers((prev) => [...prev, { correct }]);
+    const next = [...answersRef.current, { correct }];
+    answersRef.current = next;
+    setAnswers(next);
     setRevealed(true);
+    return correct;
   };
 
-  const nextQuestion = async () => {
+  const nextQuestion = async (lastCorrect?: boolean) => {
     if (currentIdx + 1 < questions.length) {
       setCurrentIdx((i) => i + 1);
       setChosen(null);
@@ -144,7 +149,7 @@ export default function Quiz() {
     }
     setTimerActive(false);
     setPhase("result");
-    const finalEarned = answers.reduce(
+    const finalEarned = answersRef.current.reduce(
       (sum, a, i) => sum + (a.correct ? (questions[i]?.points ?? POINTS_PER_CORRECT) : 0),
       0
     );
