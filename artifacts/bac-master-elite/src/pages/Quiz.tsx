@@ -54,6 +54,7 @@ export default function Quiz() {
   const limitReached = !isPremium && remaining === 0;
 
   const [phase, setPhase] = useState<Phase>("intro");
+  const [quizId, setQuizId] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty>("facile");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -122,6 +123,7 @@ export default function Quiz() {
     setChosen(null);
     setRevealed(false);
     setAnswers([]);
+    setQuizId((n) => n + 1);
     setPhase("playing");
   };
 
@@ -137,20 +139,25 @@ export default function Quiz() {
       setCurrentIdx((i) => i + 1);
       setChosen(null);
       setRevealed(false);
+      setTimeLeft(cfg.timePerQ);
       return;
     }
     setTimerActive(false);
     setPhase("result");
+    const finalEarned = answers.reduce(
+      (sum, a, i) => sum + (a.correct ? (questions[i]?.points ?? POINTS_PER_CORRECT) : 0),
+      0
+    );
     if (user) {
       try {
         await saveResult.mutateAsync({
           user_id: user.id,
           serie,
-          score: earnedPoints,
+          score: finalEarned,
           total: questions.length * POINTS_PER_CORRECT,
         });
         toast({
-          title: `+${earnedPoints} points !`,
+          title: `+${finalEarned} points !`,
           description: `Bravo, vos points ont été ajoutés à votre profil.`,
         });
       } catch (err) {
@@ -320,7 +327,7 @@ export default function Quiz() {
 
           {phase === "playing" && questions.length > 0 && (
             <motion.div
-              key={`q-${currentIdx}`}
+              key={`q-${quizId}-${currentIdx}`}
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
