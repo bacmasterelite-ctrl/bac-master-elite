@@ -8,6 +8,7 @@ import {
   Trophy,
   RotateCw,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   Lock,
   Crown,
@@ -202,7 +203,7 @@ export default function Quiz() {
           <p className="mt-1 text-sm text-muted-foreground">
             5 questions adaptées à votre série. Chaque bonne réponse rapporte{" "}
             <span className="font-semibold text-emerald-600">
-              jusqu'à {5 * POINTS_PER_CORRECT} points
+              jusqu'à 100 points
             </span>{" "}
             ajoutés à votre profil et au classement.
           </p>
@@ -239,6 +240,7 @@ export default function Quiz() {
               exit={{ opacity: 0, y: -12 }}
               className="rounded-2xl border border-border bg-card p-6 shadow-sm"
             >
+              <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-hero-gradient">
                   <Brain className="h-6 w-6 text-white" />
@@ -256,7 +258,8 @@ export default function Quiz() {
 
               {limitReached ? (
                 <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/30">
-                  <div className="flex items-start gap-3">
+                  <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+              <div className="flex items-start gap-3">
                     <Lock className="h-5 w-5 shrink-0 text-amber-600" />
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
@@ -309,8 +312,10 @@ export default function Quiz() {
                     disabled={incrementUsage.isPending}
                     className={cn("w-full rounded-2xl border-2 p-4 text-left transition-all hover:scale-[1.01] active:scale-100", c.bg, c.border)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+              <div className="flex items-center justify-between">
+                      <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
+              <div className="flex items-center gap-3">
                         <span className="text-2xl">{c.emoji}</span>
                         <div>
                           <p className={cn("font-bold text-base", c.color)}>{c.label}</p>
@@ -339,6 +344,7 @@ export default function Quiz() {
               exit={{ opacity: 0, x: -24 }}
               className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
             >
+              <button type="button" onClick={restart} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"><ArrowLeft className="h-4 w-4" /> Retour</button>
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                 <span>
                   Question {currentIdx + 1} / {questions.length}
