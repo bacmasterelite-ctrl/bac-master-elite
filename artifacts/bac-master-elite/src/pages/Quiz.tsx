@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain,
+  Brain, ChevronDown,
   CheckCircle2,
   XCircle,
   Trophy,
