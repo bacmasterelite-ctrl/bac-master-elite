@@ -119,9 +119,11 @@ export default function Exercice() {
       });
   }, [user?.id, exerciseId]);
 
+  const isExtremeCheck = (exercises.find((e) => e.id == exerciseId) as any)?.difficulty === 'extreme';
+
   // Charger questions ouvertes
   useEffect(() => {
-    if (!exerciseId || !isExtreme) return;
+    if (!exerciseId || !isExtremeCheck) return;
     setOpenLoading(true);
     supabase
       .from("exercise_open_questions")
@@ -132,7 +134,7 @@ export default function Exercice() {
         if (!error && data) setOpenQuestions(data as OpenQuestion[]);
         setOpenLoading(false);
       });
-  }, [exerciseId, isExtreme]);
+  }, [exerciseId, isExtremeCheck]);
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
