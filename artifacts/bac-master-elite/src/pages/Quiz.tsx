@@ -27,13 +27,14 @@ import {
   FREE_QUIZ_DAILY_LIMIT,
 } from "@/lib/extensions";
 import {
-  getQuizForSerie,
+  getQuizForSerie, getQuizFromSupabase, getLessonsForSerie,
+  DIFFICULTY_CONFIG,
   POINTS_PER_CORRECT,
-  type QuizQuestion,
+  type QuizQuestion, type Difficulty,
 } from "@/lib/quizBank";
 import { cn } from "@/lib/utils";
 
-type Phase = "intro" | "playing" | "result";
+type Phase = "intro" | "level" | "playing" | "result";
 
 export default function Quiz() {
   const { user } = useAuth();
@@ -53,20 +54,39 @@ export default function Quiz() {
   const limitReached = !isPremium && remaining === 0;
 
   const [phase, setPhase] = useState<Phase>("intro");
+  const [difficulty, setDifficulty] = useState<Difficulty>("facile");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [answers, setAnswers] = useState<{ correct: boolean }[]>([]);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
 
   const score = useMemo(
     () => answers.filter((a) => a.correct).length,
     [answers],
   );
   const totalCorrect = score;
-  const earnedPoints = totalCorrect * POINTS_PER_CORRECT;
+  const cfg = DIFFICULTY_CONFIG[difficulty];
+  const earnedPoints = useMemo(
+    () => answers.reduce((sum, a, i) => sum + (a.correct ? (questions[i]?.points ?? POINTS_PER_CORRECT) : 0), 0),
+    [answers, questions],
+  );
 
-  const startQuiz = async () => {
+  useEffect(() => {
+    if (!timerActive || timeLeft <= 0) return;
+    const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timerActive, timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && timerActive && !revealed) {
+      submitAnswer(true);
+    }
+  }, [timeLeft, timerActive, revealed]);
+
+  const startQuiz = async (diff: Difficulty) => {
     if (!user) return;
     if (limitReached) return;
     if (!isPremium) {
@@ -84,7 +104,20 @@ export default function Quiz() {
         return;
       }
     }
-    setQuestions(getQuizForSerie(serie, 5));
+    setDifficulty(diff);
+    let qs: QuizQuestion[] = [];
+    try {
+      const lessons = await getLessonsForSerie(serie);
+      if (lessons.length > 0) {
+        const picked = lessons[Math.floor(Math.random() * lessons.length)];
+        qs = await getQuizFromSupabase(picked.id, diff);
+        if (qs.length > 0) qs = qs.map((q) => ({ ...q, subject: q.subject || picked.subject }));
+      }
+    } catch (_) {}
+    if (qs.length === 0) qs = getQuizForSerie(serie, DIFFICULTY_CONFIG[diff].questions, diff);
+    setQuestions(qs);
+    setTimeLeft(DIFFICULTY_CONFIG[diff].timePerQ);
+    setTimerActive(true);
     setCurrentIdx(0);
     setChosen(null);
     setRevealed(false);
@@ -106,6 +139,7 @@ export default function Quiz() {
       setRevealed(false);
       return;
     }
+    setTimerActive(false);
     setPhase("result");
     if (user) {
       try {
@@ -234,15 +268,53 @@ export default function Quiz() {
                 </div>
               ) : (
                 <Button
-                  onClick={startQuiz}
+                  onClick={() => setPhase("level")}
                   disabled={incrementUsage.isPending}
                   className="mt-6 w-full rounded-full bg-hero-gradient text-white hover:opacity-90 sm:w-auto"
                   data-testid="button-start-quiz"
                 >
-                  Lancer le quiz
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  Choisir le niveau
+                  <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               )}
+            </motion.div>
+          )}
+
+          {phase === "level" && (
+            <motion.div key="level"
+              initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-12 }}
+              className="space-y-4"
+            >
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Choisissez votre niveau
+              </p>
+              {(["facile","moyen","difficile","extreme"] as Difficulty[]).map((diff) => {
+                const c = DIFFICULTY_CONFIG[diff];
+                return (
+                  <button key={diff} type="button"
+                    onClick={() => startQuiz(diff)}
+                    disabled={incrementUsage.isPending}
+                    className={cn("w-full rounded-2xl border-2 p-4 text-left transition-all hover:scale-[1.01] active:scale-100", c.bg, c.border)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{c.emoji}</span>
+                        <div>
+                          <p className={cn("font-bold text-base", c.color)}>{c.label}</p>
+                          <p className="text-xs text-muted-foreground">{c.questions} questions · {c.timePerQ}s/question</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn("font-extrabold text-lg", c.color)}>+{c.pointsPerCorrect} pts</p>
+                        <p className="text-xs text-muted-foreground">par bonne réponse</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+              <Button variant="outline" onClick={() => setPhase("intro")} className="rounded-full">
+                ← Retour
+              </Button>
             </motion.div>
           )}
 
@@ -342,7 +414,7 @@ export default function Quiz() {
                     data-testid="button-next-question"
                   >
                     {currentIdx + 1 < questions.length ? "Question suivante" : "Voir mon score"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 )}
               </div>

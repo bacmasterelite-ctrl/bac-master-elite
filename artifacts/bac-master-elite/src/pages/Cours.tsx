@@ -220,7 +220,7 @@ export default function Cours() {
               })}
             </div>
           ) : (
-            <p className="text-center py-10 text-muted-foreground">Aucun thème trouvé.</p>
+            <p className="text-center py-10 text-muted-foreground">Aucune leçon disponible pour cette matière.</p>
           )}
         </div>
       </DashboardLayout>
