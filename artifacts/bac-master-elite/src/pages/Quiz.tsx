@@ -125,9 +125,9 @@ export default function Quiz() {
     setPhase("playing");
   };
 
-  const submitAnswer = () => {
-    if (chosen === null || revealed) return;
-    const correct = chosen === questions[currentIdx].correctIndex;
+  const submitAnswer = (timeout = false) => {
+    if (revealed) return;
+    const correct = !timeout && chosen === questions[currentIdx].correctIndex;
     setAnswers((prev) => [...prev, { correct }]);
     setRevealed(true);
   };
