@@ -26,7 +26,6 @@ export const DIFFICULTY_CONFIG: Record<
 
 export const POINTS_PER_CORRECT = 10;
 
-// Fallback local (anciennes questions) si Supabase est vide
 const LOCAL_QUESTIONS: Record<"A" | "C" | "D", QuizQuestion[]> = {
   A: [
     { id:"A-philo-1", subject:"Philosophie", question:"Quel philosophe a écrit \"Je pense, donc je suis\" ?", choices:["Platon","Descartes","Kant","Sartre"], correctIndex:1, explanation:"Cogito, ergo sum — René Descartes, 1637.", points:10 },
@@ -60,27 +59,44 @@ const shuffle = <T,>(arr: T[]): T[] => {
   return a;
 };
 
-// ── Récupère questions depuis Supabase selon leçon + niveau ──────────────────
 export async function getQuizFromSupabase(
   lessonId: string,
   difficulty: Difficulty,
 ): Promise<QuizQuestion[]> {
   const config = DIFFICULTY_CONFIG[difficulty];
+
+  // 1. Essaie par leçon spécifique
   const { data, error } = await supabase
     .from("lesson_quiz_questions")
-    .select("id, lesson_id, question, options, correct_answer, explanation, difficulty, points")
+    .select("id, lesson_id, question, options, correct_answer, explanation, difficulty, points, lessons!inner(subject, title)")
     .eq("lesson_id", lessonId)
     .eq("difficulty", difficulty);
 
-  if (error || !data || data.length === 0) return [];
+  let rows = (!error && data && data.length > 0) ? data : [];
 
-  const shuffled = shuffle(data).slice(0, config.questions);
+  // 2. Si pas assez, pioche dans toutes les leçons A/C/D
+  if (rows.length < config.questions) {
+    const { data: data2 } = await supabase
+      .from("lesson_quiz_questions")
+      .select("id, lesson_id, question, options, correct_answer, explanation, difficulty, points, lessons!inner(subject, title, serie)")
+      .eq("difficulty", difficulty)
+      .ilike("lessons.serie", "%A%")
+      .limit(config.questions * 3);
+
+    if (data2 && data2.length > 0) rows = data2;
+  }
+
+  if (rows.length === 0) return [];
+
+  const shuffled = shuffle(rows).slice(0, config.questions);
   return shuffled.map((row) => ({
     id: row.id,
     lesson_id: row.lesson_id,
-    subject: "",
+    subject: (row.lessons as any)?.subject ?? "",
     question: row.question,
-    choices: Array.isArray(row.options) ? row.options : Object.values(row.options as Record<string, string>),
+    choices: Array.isArray(row.options)
+      ? row.options
+      : Object.values(row.options as Record<string, string>),
     correctIndex: row.correct_answer,
     explanation: row.explanation ?? undefined,
     difficulty: row.difficulty as Difficulty,
@@ -88,7 +104,6 @@ export async function getQuizFromSupabase(
   }));
 }
 
-// ── Fallback local par série (rétrocompatibilité) ─────────────────────────────
 export const getQuizForSerie = (
   serie: string | null | undefined,
   count = 5,
@@ -102,17 +117,24 @@ export const getQuizForSerie = (
     .map((q) => ({ ...q, points: pts }));
 };
 
-// ── Leçons disponibles par série ──────────────────────────────────────────────
 export async function getLessonsForSerie(serie: string): Promise<
   { id: string; title: string; subject: string }[]
 > {
   const { data, error } = await supabase
-    .from("lessons")
-    .select("id, title, subject, serie")
-    .or(`serie.eq.${serie},serie.like.%${serie}%,serie.eq.A/C/D`)
-    .order("subject")
-    .order("title");
+    .from("lesson_quiz_questions")
+    .select("lesson_id, lessons!inner(id, title, subject, serie)")
+    .ilike("lessons.serie", `%${serie}%`);
 
   if (error || !data) return [];
-  return data as { id: string; title: string; subject: string }[];
+
+  const seen = new Set<string>();
+  const result: { id: string; title: string; subject: string }[] = [];
+  for (const row of data) {
+    const l = row.lessons as any;
+    if (l && !seen.has(l.id)) {
+      seen.add(l.id);
+      result.push({ id: l.id, title: l.title, subject: l.subject });
+    }
+  }
+  return result;
 }
