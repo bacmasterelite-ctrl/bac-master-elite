@@ -149,6 +149,7 @@ export default function Quiz() {
     }
     setTimerActive(false);
     setPhase("result");
+    console.log("[DEBUG] answersRef", answersRef.current, "questions", questions.length);
     const finalEarned = answersRef.current.reduce(
       (sum, a, i) => sum + (a.correct ? (questions[i]?.points ?? POINTS_PER_CORRECT) : 0),
       0
