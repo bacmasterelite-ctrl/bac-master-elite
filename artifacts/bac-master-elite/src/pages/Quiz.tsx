@@ -330,9 +330,6 @@ export default function Quiz() {
                   </button>
                 );
               })}
-              <Button variant="outline" onClick={() => setPhase("level")} className="rounded-full">
-                ← Retour
-              </Button>
             </motion.div>
           )}
 
