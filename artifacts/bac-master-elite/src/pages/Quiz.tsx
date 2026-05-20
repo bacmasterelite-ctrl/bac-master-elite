@@ -202,7 +202,7 @@ export default function Quiz() {
           <p className="mt-1 text-sm text-muted-foreground">
             5 questions adaptées à votre série. Chaque bonne réponse rapporte{" "}
             <span className="font-semibold text-emerald-600">
-              {POINTS_PER_CORRECT} points
+              jusqu'à {5 * POINTS_PER_CORRECT} points
             </span>{" "}
             ajoutés à votre profil et au classement.
           </p>
@@ -346,6 +346,7 @@ export default function Quiz() {
                 <span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                   {questions[currentIdx].subject}
                 </span>
+                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-rose-700 font-bold tabular-nums">⏱ {timeLeft}s</span>
               </div>
               <Progress
                 value={((currentIdx + (revealed ? 1 : 0)) / questions.length) * 100}
