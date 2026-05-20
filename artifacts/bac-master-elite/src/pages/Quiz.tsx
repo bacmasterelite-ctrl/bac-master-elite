@@ -178,7 +178,7 @@ export default function Quiz() {
   };
 
   const restart = () => {
-    setPhase("intro");
+    setPhase("level");
     setQuestions([]);
     setAnswers([]);
     setCurrentIdx(0);
@@ -187,7 +187,7 @@ export default function Quiz() {
   };
 
   useEffect(() => {
-    setPhase("intro");
+    setPhase("level");
   }, [serie]);
 
   return (
@@ -330,7 +330,7 @@ export default function Quiz() {
                   </button>
                 );
               })}
-              <Button variant="outline" onClick={() => setPhase("intro")} className="rounded-full">
+              <Button variant="outline" onClick={() => setPhase("level")} className="rounded-full">
                 ← Retour
               </Button>
             </motion.div>
