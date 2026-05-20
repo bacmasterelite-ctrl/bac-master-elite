@@ -412,7 +412,7 @@ export default function Quiz() {
               <div className="flex justify-end">
                 {!revealed ? (
                   <Button
-                    onClick={submitAnswer}
+                    onClick={() => submitAnswer()}
                     disabled={chosen === null}
                     className="rounded-full bg-hero-gradient text-white hover:opacity-90"
                     data-testid="button-submit-answer"
