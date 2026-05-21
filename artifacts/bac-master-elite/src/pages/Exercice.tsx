@@ -91,6 +91,7 @@ export default function Exercice() {
   const [extremePhase, setExtremePhase] = useState<"qcm" | "open" | "done">("qcm");
   const [timeLeft, setTimeLeft] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
+  const [openFeedback, setOpenFeedback] = useState<Record<number, "correct" | "wrong" | null>>({});
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
@@ -172,6 +173,7 @@ export default function Exercice() {
 
   const handleSelectOption = (label: string) => {
     if (showExplanation) return;
+    setTimerActive(false);
     setSelectedAnswers((prev) => ({ ...prev, [currentIndex]: label }));
     setShowExplanation(true);
   };
@@ -206,6 +208,9 @@ export default function Exercice() {
       }
     } else {
       setCurrentIndex((i) => i + 1);
+      const diff = (exercises.find((e: any) => e.id == exerciseId) as any)?.difficulty ?? "moyen";
+      setTimeLeft(TIMER_CONFIG[diff] ?? 45);
+      setTimerActive(true);
     }
   };
 
@@ -432,19 +437,46 @@ export default function Exercice() {
                 />
               </div>
               {hasAnswered && !showCorrection[openIndex] && (
-                <Button
-                  onClick={() => setShowCorrection(prev => ({ ...prev, [openIndex]: true }))}
-                  variant="outline"
-                  className="w-full rounded-xl border-purple-500/30 text-purple-600 hover:bg-purple-500/5"
-                >
-                  <Eye className="mr-2 h-4 w-4" /> Voir la correction
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setOpenFeedback(prev => ({ ...prev, [openIndex]: "correct" }));
+                      setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
+                    }}
+                    className="flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> J'ai bon
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setOpenFeedback(prev => ({ ...prev, [openIndex]: "wrong" }));
+                      setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
+                    }}
+                    variant="outline"
+                    className="flex-1 rounded-xl border-rose-500/30 text-rose-600 hover:bg-rose-500/5"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" /> J'ai faux
+                  </Button>
+                </div>
               )}
               {showCorrection[openIndex] && (
-                <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-2">
-                  <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">✅ Correction attendue</p>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-xl border p-4 space-y-2 ${
+                    openFeedback[openIndex] === "correct"
+                      ? "border-emerald-500/30 bg-emerald-500/5"
+                      : "border-rose-500/30 bg-rose-500/5"
+                  }`}
+                >
+                  {openFeedback[openIndex] === "correct" ? (
+                    <p className="text-sm font-bold text-emerald-700">🎉 Excellent ! Tu maîtrises ce concept, continue comme ça !</p>
+                  ) : (
+                    <p className="text-sm font-bold text-rose-700">💪 Pas grave ! Lis bien la correction, tu vas progresser !</p>
+                  )}
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-2">Correction attendue</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">{currentOpen?.expected_answer}</p>
-                </div>
+                </motion.div>
               )}
               {showCorrection[openIndex] && (
                 <Button
@@ -523,6 +555,31 @@ export default function Exercice() {
             <span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500" />{points} pts</span>
           </div>
         </div>
+
+        {/* Chrono */}
+        {!showExplanation && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-medium flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" /> Temps restant
+              </span>
+              <span className={`font-black text-sm tabular-nums ${
+                timeLeft <= 10 ? "text-rose-600 animate-pulse" :
+                timeLeft <= 20 ? "text-amber-600" : "text-emerald-600"
+              }`}>{timeLeft}s</span>
+            </div>
+            <div className="w-full rounded-full bg-muted h-2 overflow-hidden">
+              <motion.div
+                animate={{ width: `${(timeLeft / (TIMER_CONFIG[difficulty] ?? 45)) * 100}%` }}
+                transition={{ duration: 0.9 }}
+                className={`h-full rounded-full transition-colors ${
+                  timeLeft <= 10 ? "bg-rose-500" :
+                  timeLeft <= 20 ? "bg-amber-500" : "bg-emerald-500"
+                }`}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Barre de progression */}
         <div className="space-y-1.5">
