@@ -47,6 +47,16 @@ function pickNumber(record: Record<string, unknown>, ...keys: string[]): number 
   return null;
 }
 
+const TIMER_CONFIG: Record<string, number> = {
+  facile: 60,
+  moyen: 45,
+  difficile: 30,
+  extreme: 20,
+  Facile: 60,
+  Moyen: 45,
+  Difficile: 30,
+};
+
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["option_a", "option_b", "option_c", "option_d"] as const;
 
@@ -79,6 +89,8 @@ export default function Exercice() {
   const [showCorrection, setShowCorrection] = useState<Record<number, boolean>>({});
   const [showHint, setShowHint] = useState<Record<number, boolean>>({});
   const [extremePhase, setExtremePhase] = useState<"qcm" | "open" | "done">("qcm");
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
@@ -97,6 +109,11 @@ export default function Exercice() {
       .then(({ data, error }) => {
         if (!error && data) setQuestions(data as QcmQuestion[]);
         setQcmLoading(false);
+        if (data && data.length > 0) {
+          const diff = (exercises.find((e: any) => e.id == exerciseId) as any)?.difficulty ?? "moyen";
+          setTimeLeft(TIMER_CONFIG[diff] ?? 45);
+          setTimerActive(true);
+        }
       });
   }, [exerciseId]);
 
@@ -135,6 +152,18 @@ export default function Exercice() {
         setOpenLoading(false);
       });
   }, [exerciseId, isExtremeCheck]);
+
+    useEffect(() => {
+    if (!timerActive || timeLeft <= 0) return;
+    const t = setTimeout(() => setTimeLeft(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timerActive, timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && timerActive && !showExplanation && questions.length > 0) {
+      handleSelectOption("__timeout__");
+    }
+  }, [timeLeft, timerActive, showExplanation, questions]);
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
