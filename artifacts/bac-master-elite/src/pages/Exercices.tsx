@@ -332,7 +332,7 @@ export default function Exercices() {
                       )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />~25 min</span>
+                      
                       <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" />{ex.points} pts</span>
                       {isInProgress && (
                         <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
