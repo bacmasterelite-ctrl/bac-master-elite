@@ -96,7 +96,7 @@ export default function Exercices() {
         const r = e as Record<string, unknown>;
         const exSerie = ((r.serie as string) ?? "").toUpperCase();
         if (!exSerie) return true;
-        return exSerie.split("/").map((s) => s.trim()).includes(serie);
+        return exSerie.split(/[,/]/).map((s) => s.trim()).includes(serie);
       })
       .map((e) => {
         const r = e as Record<string, unknown>;
