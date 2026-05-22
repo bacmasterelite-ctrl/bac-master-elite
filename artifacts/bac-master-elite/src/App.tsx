@@ -31,6 +31,9 @@ const Quiz = lazy(() => import("@/pages/Quiz"));
 const Flashcards = lazy(() => import("@/pages/Flashcards"));
 const Parrainage = lazy(() => import("@/pages/Parrainage"));
 const DefiElite = lazy(() => import("@/pages/DefiElite"));
+const MentionsLegales = lazy(() => import("@/pages/MentionsLegales"));
+const CGU = lazy(() => import("@/pages/CGU"));
+const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
 import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
@@ -174,6 +177,9 @@ function AppRoutes() {
       </Route>
 
       <Route path="/reset-password">
+      <Route path="/mentions-legales"><MentionsLegales /></Route>
+      <Route path="/cgu"><CGU /></Route>
+      <Route path="/confidentialite"><Confidentialite /></Route>
         <ResetPassword />
       </Route>
 
