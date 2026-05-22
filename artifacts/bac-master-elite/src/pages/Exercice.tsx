@@ -564,7 +564,7 @@ export default function Exercice() {
           <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">{subject}</p>
           <h1 className="mt-1 text-xl font-bold sm:text-2xl">{title}</h1>
           <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-<span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500" />{points} pts</span>
+
           </div>
         </div>
 
