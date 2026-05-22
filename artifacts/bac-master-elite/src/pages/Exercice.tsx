@@ -29,6 +29,7 @@ interface OpenQuestion {
   question: string;
   expected_answer: string;
   hint: string;
+  keywords: string;
   position: number;
 }
 
@@ -92,6 +93,7 @@ export default function Exercice() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [openFeedback, setOpenFeedback] = useState<Record<number, "correct" | "wrong" | null>>({});
+  const [openResult, setOpenResult] = useState<Record<number, "correct" | "wrong" | null>>({});
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
@@ -442,27 +444,21 @@ export default function Exercice() {
                 />
               </div>
               {hasAnswered && !showCorrection[openIndex] && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      setOpenFeedback(prev => ({ ...prev, [openIndex]: "correct" }));
-                      setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
-                    }}
-                    className="flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> J'ai bon
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setOpenFeedback(prev => ({ ...prev, [openIndex]: "wrong" }));
-                      setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
-                    }}
-                    variant="outline"
-                    className="flex-1 rounded-xl border-rose-500/30 text-rose-600 hover:bg-rose-500/5"
-                  >
-                    <XCircle className="mr-2 h-4 w-4" /> J'ai faux
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => {
+                    const answer = (userAnswers[openIndex] ?? "").toLowerCase();
+                    const keywords = (currentOpen?.keywords ?? "").split(",").map(k => k.trim().toLowerCase()).filter(Boolean);
+                    const matchCount = keywords.filter(k => answer.includes(k)).length;
+                    const threshold = Math.ceil(keywords.length * 0.4);
+                    const isCorrect = keywords.length === 0 ? true : matchCount >= threshold;
+                    setOpenResult(prev => ({ ...prev, [openIndex]: isCorrect ? "correct" : "wrong" }));
+                    setOpenFeedback(prev => ({ ...prev, [openIndex]: isCorrect ? "correct" : "wrong" }));
+                    setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
+                  }}
+                  className="w-full rounded-xl bg-purple-600 text-white hover:bg-purple-700"
+                >
+                  <PenLine className="mr-2 h-4 w-4" /> Valider ma réponse
+                </Button>
               )}
               {showCorrection[openIndex] && (
                 <motion.div
