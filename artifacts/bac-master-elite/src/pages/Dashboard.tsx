@@ -271,6 +271,14 @@ export default function Dashboard() {
       color: "from-violet-600 to-fuchsia-500",
       delta: weeklyProgress > 0 ? `${weeklyProgress}% cette semaine` : null,
     },
+    {
+      label: "Points gagnés",
+      value: profile?.points ?? 0,
+      suffix: " pts",
+      icon: Brain,
+      color: "from-rose-500 to-pink-500",
+      delta: (profile?.points ?? 0) > 0 ? `${profile?.points} pts accumulés` : null,
+    },
   ];
 
   const goal = Math.max(exercises.length, 10);

@@ -300,7 +300,7 @@ export default function Exercices() {
             {filteredItems.map((ex, i) => {
               const isCompleted = ex.status === "completed";
               const isInProgress = ex.status === "in_progress";
-              const ctaLabel = isCompleted ? "Revoir" : isInProgress ? "Continuer" : "Commencer";
+              const ctaLabel = isCompleted ? "Reprendre" : isInProgress ? "Continuer" : "Commencer";
               const ctaClasses = isCompleted
                 ? "border border-emerald-500 bg-emerald-500/10 text-emerald-700"
                 : isInProgress
