@@ -194,7 +194,7 @@ export default function Exercice() {
         if (user?.id && exerciseId) {
         const answersMap: Record<string, string> = {};
         questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
-        const netPoints = (finalScore * 1) - ((totalQuestions - finalScore) * 1);
+        const netPoints = finalScore;
         Promise.all([
           supabase.from("user_exercise_progress").upsert({
             user_id: user.id,
