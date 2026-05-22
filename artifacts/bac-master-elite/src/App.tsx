@@ -177,12 +177,12 @@ function AppRoutes() {
       </Route>
 
       <Route path="/reset-password">
-      <Route path="/mentions-legales"><MentionsLegales /></Route>
-      <Route path="/cgu"><CGU /></Route>
-      <Route path="/confidentialite"><Confidentialite /></Route>
         <ResetPassword />
       </Route>
 
+      <Route path="/mentions-legales"><MentionsLegales /></Route>
+      <Route path="/cgu"><CGU /></Route>
+      <Route path="/confidentialite"><Confidentialite /></Route>
       <Route component={NotFound} />
     </Switch></Suspense>
   );
