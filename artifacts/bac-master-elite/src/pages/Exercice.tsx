@@ -123,7 +123,7 @@ export default function Exercice() {
     if (!user?.id || !exerciseId) return;
     supabase
       .from("user_exercise_progress")
-      .select("status, qcm_answers, qcm_score, completed")
+      .select("status, score, completed")
       .eq("user_id", user.id)
       .eq("exercise_id", exerciseId)
       .single()
@@ -131,7 +131,7 @@ export default function Exercice() {
         if (data?.completed === true || data?.status === "completed") {
           setCompleted(true);
           setQcmDone(true);
-          setScore(data.qcm_score ?? 0);
+          setScore(data.score ?? 0);
 
         }
       });
@@ -194,21 +194,19 @@ export default function Exercice() {
         if (user?.id && exerciseId) {
         const answersMap: Record<string, string> = {};
         questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
-        const netPoints = finalScore;
         Promise.all([
           supabase.from("user_exercise_progress").upsert({
             user_id: user.id,
             exercise_id: exerciseId,
             status: "completed",
-            qcm_score: finalScore,
-            qcm_answers: answersMap,
             score: Math.round((finalScore / totalQuestions) * 100),
             completed: true,
             completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }, { onConflict: "user_id,exercise_id" }),
           supabase.rpc("increment_user_points", {
             uid: user.id,
-            pts: netPoints,
+            pts: finalScore,
           }),
         ]);
         }
