@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect } from "react";
-import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft, Zap, Target, Flame, Skull, Lock } from "lucide-react";
+import { PenLine, CheckCircle2, Clock, ArrowRight, Star, BookOpen, ChevronLeft, Zap, Target, Flame, Skull } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { useExercises, useProfile, usePremiumStatus } from "@/lib/queries";
+import { useExercises, useProfile } from "@/lib/queries";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { supabase } from "@/lib/supabase";
 import { subjectsForSerie, styleForSubject } from "@/lib/subjects";
@@ -63,7 +63,6 @@ const difficultyColor: Record<string, string> = {
 export default function Exercices() {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
-  const { isPremium } = usePremiumStatus(user?.id);
   const { data: exercises = [], isLoading } = useExercises();
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [activeLevel, setActiveLevel] = useState<Level | null>(null);
@@ -129,36 +128,11 @@ export default function Exercices() {
     );
   }, [allItems, activeSubject]);
 
-  const completedByLevel = useMemo(() => {
-    const map: Record<string, number> = {};
-    itemsBySubject.forEach((ex) => {
-      if (ex.status === "completed") {
-        map[ex.difficulty] = (map[ex.difficulty] ?? 0) + 1;
-      }
-    });
-    return map;
-  }, [itemsBySubject]);
-
   const countByLevel = useMemo(() => {
     const map: Record<string, number> = {};
     itemsBySubject.forEach((ex) => { map[ex.difficulty] = (map[ex.difficulty] ?? 0) + 1; });
     return map;
   }, [itemsBySubject]);
-
-  const isLevelUnlocked = useMemo(() => {
-    const facileTotal = countByLevel["facile"] ?? 0;
-    const moyenTotal = countByLevel["moyen"] ?? 0;
-    const difficileTotal = countByLevel["difficile"] ?? 0;
-    const facileAllDone = facileTotal > 0 && (completedByLevel["facile"] ?? 0) >= facileTotal;
-    const moyenAllDone = moyenTotal > 0 && (completedByLevel["moyen"] ?? 0) >= moyenTotal;
-    const difficileAllDone = difficileTotal > 0 && (completedByLevel["difficile"] ?? 0) >= difficileTotal;
-    return {
-      facile: true,
-      moyen: facileAllDone,
-      difficile: moyenAllDone,
-      extreme: difficileAllDone && isPremium,
-    };
-  }, [countByLevel, completedByLevel, isPremium]);
 
   const filteredItems = useMemo(() => {
     if (!activeSubject || !activeLevel) return [];
@@ -234,36 +208,22 @@ export default function Exercices() {
               const count = countByLevel[level.key] ?? 0;
               const Icon = level.icon;
               const isExtreme = level.key === "extreme";
-              const unlocked = isLevelUnlocked[level.key as Level];
-              const completedCount = completedByLevel[level.key] ?? 0;
-              const allDone = count > 0 && completedCount >= count;
-              let lockReason = "";
-              if (!unlocked) {
-                if (level.key === "moyen") lockReason = "Terminez tous les exercices Facile d'abord";
-                else if (level.key === "difficile") lockReason = "Terminez tous les exercices Moyen d'abord";
-                else if (level.key === "extreme" && !isPremium) lockReason = "Premium requis + Difficile terminé";
-                else if (level.key === "extreme") lockReason = "Terminez tous les exercices Difficile d'abord";
-              }
               return (
                 <motion.button
                   key={level.key}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  onClick={() => unlocked && count > 0 && setActiveLevel(level.key as Level)}
-                  disabled={!unlocked || count === 0}
+                  onClick={() => setActiveLevel(level.key as Level)}
+                  disabled={count === 0}
                   className={`flex items-center gap-4 rounded-2xl border-2 bg-card p-5 text-left shadow-sm transition-all
-                    ${!unlocked || count === 0
-                      ? "opacity-50 cursor-not-allowed border-border"
+                    ${count === 0
+                      ? "opacity-40 cursor-not-allowed border-border"
                       : `hover:shadow-md hover:scale-[1.01] ${level.border} cursor-pointer`
                     }`}
                 >
                   <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${level.bg}`}>
-                    {!unlocked ? (
-                      <Lock className={`h-7 w-7 ${level.text}`} />
-                    ) : (
-                      <Icon className={`h-7 w-7 ${level.text}`} />
-                    )}
+                    <Icon className={`h-7 w-7 ${level.text}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -276,23 +236,13 @@ export default function Exercices() {
                           👑 Premium
                         </span>
                       )}
-                      {allDone && (
-                        <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                          ✅ Terminé
-                        </span>
-                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {!unlocked ? lockReason : level.description}
+                    <p className="text-sm text-muted-foreground mt-0.5">{level.description}</p>
+                    <p className={`text-xs font-semibold mt-1 ${count === 0 ? "text-muted-foreground" : level.text}`}>
+                      {count === 0 ? "Aucun exercice disponible" : `${count} exercice${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""}`}
                     </p>
-                    {unlocked && (
-                      <p className={`text-xs font-semibold mt-1 ${count === 0 ? "text-muted-foreground" : level.text}`}>
-                        {count === 0 ? "Aucun exercice disponible" : `${completedCount}/${count} exercice${count > 1 ? "s" : ""} terminé${completedCount > 1 ? "s" : ""}`}
-                      </p>
-                    )}
                   </div>
-                  {unlocked && count > 0 && <ArrowRight className={`h-5 w-5 shrink-0 ${level.text}`} />}
-                  {!unlocked && <Lock className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                  {count > 0 && <ArrowRight className={`h-5 w-5 shrink-0 ${level.text}`} />}
                 </motion.button>
               );
             })}
