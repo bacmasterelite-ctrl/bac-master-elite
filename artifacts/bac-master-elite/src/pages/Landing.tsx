@@ -375,9 +375,9 @@ export default function Landing() {
             <span>© {new Date().getFullYear()} BAC MASTER ELITE. Tous droits réservés.</span>
           </div>
           <div className="flex gap-5">
-            <a href="#" className="hover:text-foreground">Confidentialité</a>
-            <a href="#" className="hover:text-foreground">Conditions</a>
-            <a href="#" className="hover:text-foreground">Contact</a>
+            <a href="/confidentialite" className="hover:text-foreground">Confidentialité</a>
+            <a href="/cgu" className="hover:text-foreground">Conditions</a>
+            <a href="mailto:bacmasterelite@gmail.com" className="hover:text-foreground">Contact</a>
           </div>
         </div>
       </footer>
