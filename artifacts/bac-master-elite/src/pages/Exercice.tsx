@@ -197,8 +197,7 @@ export default function Exercice() {
         if (user?.id && exerciseId) {
         const answersMap: Record<string, string> = {};
         questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
-        Promise.all([
-          supabase.from("user_exercise_progress").upsert({
+        supabase.from("user_exercise_progress").upsert({
             user_id: user.id,
             exercise_id: exerciseId,
             status: "completed",
@@ -206,12 +205,14 @@ export default function Exercice() {
             completed: true,
             completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }, { onConflict: "user_id,exercise_id" }),
-          supabase.rpc("increment_user_points", {
-            uid: user.id,
-            pts: finalScore,
-          }),
-        ]);
+          }, { onConflict: "user_id,exercise_id" }).then(() => {
+            if (!completed) {
+              supabase.rpc("increment_user_points", {
+                uid: user.id,
+                pts: finalScore,
+              });
+            }
+          });
         }
       }
     } else {
@@ -264,8 +265,10 @@ export default function Exercice() {
   const points = pickNumber(r, "points") ?? 10;
 
   // ── Résultats finaux
+  const totalScore = isExtreme ? score + openScore : score;
+  const totalQCount = isExtreme ? totalQuestions + openQuestions.length : totalQuestions;
   if (qcmDone && !(isExtreme && extremePhase === "open")) {
-    const percent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    const percent = totalQCount > 0 ? Math.round((totalScore / totalQCount) * 100) : 0;
     const passed = percent >= 50;
     return (
       <DashboardLayout>
@@ -288,8 +291,8 @@ export default function Exercice() {
               <p className="mt-1 text-muted-foreground text-sm">{title}</p>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <span className="text-5xl font-black">{score}</span>
-              <span className="text-2xl text-muted-foreground font-semibold">/ {totalQuestions}</span>
+              <span className="text-5xl font-black">{totalScore}</span>
+              <span className="text-2xl text-muted-foreground font-semibold">/ {totalQCount}</span>
             </div>
             <div className="w-full rounded-full bg-muted h-3 overflow-hidden">
               <motion.div
