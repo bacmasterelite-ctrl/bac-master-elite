@@ -36,7 +36,7 @@ serve(async (req) => {
               <li>📝 Exercices et annales</li>
               <li>📊 Suivi de progression</li>
             </ul>
-            <a href="${Deno.env.get("SITE_URL")}/cours"
+            <a href="https://bac-master-elite.com/dashboard/cours"
               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1a56db;color:white;border-radius:6px;text-decoration:none;font-weight:bold">
               Commencer à réviser →
             </a>
