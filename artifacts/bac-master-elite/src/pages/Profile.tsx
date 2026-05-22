@@ -14,6 +14,16 @@ import {
   Target,
   ArrowRight,
   Settings,
+  TrendingUp,
+  Calendar,
+  Moon,
+  Sun,
+  Shield,
+  Zap,
+  Users,
+  ThumbsUp,
+  Compass,
+  MessageSquare,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -30,6 +40,17 @@ const ALL_BADGES = [
   { id: "perfect-score", label: "Score parfait", desc: "100% à un quiz", icon: Star, color: "from-yellow-400 to-amber-500", earnedAt: 500 },
   { id: "top-10", label: "Top 10", desc: "Top 10 du classement", icon: Award, color: "from-pink-500 to-rose-500", earnedAt: 1000 },
   { id: "expert", label: "Expert BAC", desc: "Mention TB", icon: Target, color: "from-indigo-500 to-purple-600", earnedAt: 2000 },
+  { id: "marathon", label: "Marathon", desc: "30 cours suivis", icon: TrendingUp, color: "from-sky-500 to-cyan-500", earnedAt: 400 },
+  { id: "streak-30", label: "Série 30 jours", desc: "30 jours de suite", icon: Calendar, color: "from-rose-500 to-pink-600", earnedAt: 600 },
+  { id: "night-owl", label: "Noctambule", desc: "Etudier après 22h", icon: Moon, color: "from-slate-600 to-indigo-700", earnedAt: 150 },
+  { id: "early-bird", label: "Lève-tôt", desc: "Etudier avant 7h", icon: Sun, color: "from-amber-400 to-yellow-500", earnedAt: 150 },
+  { id: "unbeatable", label: "Imbattable", desc: "3 scores parfaits", icon: Shield, color: "from-emerald-600 to-green-700", earnedAt: 800 },
+  { id: "speedrunner", label: "Speedrunner", desc: "Quiz en moins d'1 min", icon: Zap, color: "from-yellow-500 to-orange-500", earnedAt: 250 },
+  { id: "godfather", label: "Parrain", desc: "Parrainer un ami", icon: Users, color: "from-teal-500 to-cyan-600", earnedAt: 700 },
+  { id: "feedback", label: "Feedback", desc: "Avis sur un cours", icon: ThumbsUp, color: "from-lime-500 to-green-500", earnedAt: 50 },
+  { id: "explorer", label: "Explorateur", desc: "Toutes sections visitées", icon: Compass, color: "from-orange-400 to-amber-600", earnedAt: 80 },
+  { id: "streak-100", label: "Série 100 jours", desc: "100 jours de suite", icon: Flame, color: "from-red-600 to-rose-700", earnedAt: 3000 },
+  { id: "ready", label: "Candidat prêt", desc: "Tous sujets d'une matière", icon: MessageSquare, color: "from-blue-600 to-violet-600", earnedAt: 1500 },
 ];
 
 export default function Profile() {
