@@ -220,7 +220,7 @@ export default function Dashboard() {
     const handleFocus = () => {
       if (user?.id) {
         supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).select("id").then(({ count }) => setCoursCount(count ?? 0));
-        supabase.from("user_exercise_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).then(({ count }) => setExercicesCount(count ?? 0));
+        supabase.from("user_exercise_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("completed", true).then(({ count }) => setExercicesCount(count ?? 0));
         supabase.from("annal_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).then(({ count }) => setAnnalsCount(count ?? 0));
       }
     };
