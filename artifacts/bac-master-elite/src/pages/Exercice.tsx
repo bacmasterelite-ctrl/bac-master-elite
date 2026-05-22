@@ -195,21 +195,22 @@ export default function Exercice() {
         const answersMap: Record<string, string> = {};
         questions.forEach((q, i) => { answersMap[q.id] = selectedAnswers[i] ?? ""; });
         const netPoints = (finalScore * 1) - ((totalQuestions - finalScore) * 1);
-        supabase.from("user_exercise_progress").upsert({
-          user_id: user.id,
-          exercise_id: exerciseId,
-          status: "completed",
-          qcm_score: finalScore,
-          qcm_answers: answersMap,
-          score: Math.round((finalScore / totalQuestions) * 100),
-          completed: true,
-          completed_at: new Date().toISOString(),
-        }, { onConflict: "user_id,exercise_id" }).then(() => {
+        Promise.all([
+          supabase.from("user_exercise_progress").upsert({
+            user_id: user.id,
+            exercise_id: exerciseId,
+            status: "completed",
+            qcm_score: finalScore,
+            qcm_answers: answersMap,
+            score: Math.round((finalScore / totalQuestions) * 100),
+            completed: true,
+            completed_at: new Date().toISOString(),
+          }, { onConflict: "user_id,exercise_id" }),
           supabase.rpc("increment_user_points", {
             uid: user.id,
             pts: netPoints,
-          });
-        });
+          }),
+        ]);
         }
       }
     } else {
