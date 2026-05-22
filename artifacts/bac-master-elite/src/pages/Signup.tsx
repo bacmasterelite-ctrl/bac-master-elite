@@ -40,6 +40,7 @@ export default function Signup() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [serie, setSerie] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -161,7 +162,23 @@ export default function Signup() {
               {!serie && <p className="text-xs text-muted-foreground">Sélectionnez votre série pour personnaliser cours et exercices.</p>}
             </div>
 
-            <Button type="submit" size="lg" disabled={submitting} className="w-full rounded-full bg-hero-gradient text-white hover:opacity-90" data-testid="button-submit-signup">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 cursor-pointer accent-blue-600"
+                />
+                <label htmlFor="accept-terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
+                  J'ai lu et j'accepte les{' '}
+                  <a href="/cgu" target="_blank" className="text-blue-600 underline font-medium">CGU</a>
+                  {' '}et la{' '}
+                  <a href="/confidentialite" target="_blank" className="text-blue-600 underline font-medium">Politique de Confidentialité</a>
+                  {' '}de BAC MASTER ELITE.
+                </label>
+              </div>
+              <Button type="submit" size="lg" disabled={submitting || !acceptedTerms} className="w-full rounded-full bg-hero-gradient text-white hover:opacity-90" data-testid="button-submit-signup">
               {submitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>) : (<>Créer mon compte<ArrowRight className="ml-2 h-4 w-4" /></>)}
             </Button>
           </form>
