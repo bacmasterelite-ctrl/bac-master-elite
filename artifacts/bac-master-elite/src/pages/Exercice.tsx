@@ -261,7 +261,7 @@ export default function Exercice() {
   const points = pickNumber(r, "points") ?? 10;
 
   // ── Résultats finaux
-  if (qcmDone) {
+  if (qcmDone && !(isExtreme && extremePhase === "open")) {
     const percent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
     const passed = percent >= 50;
     return (
