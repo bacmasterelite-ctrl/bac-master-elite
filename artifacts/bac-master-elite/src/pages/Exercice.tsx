@@ -137,7 +137,7 @@ export default function Exercice() {
       });
   }, [user?.id, exerciseId]);
 
-  const isExtremeCheck = (exercises.find((e) => e.id == exerciseId) as any)?.difficulty === 'extreme';
+  const isExtremeCheck = exercise ? (exercise as any).difficulty === 'extreme' : false;
 
   // Charger questions ouvertes
   useEffect(() => {
