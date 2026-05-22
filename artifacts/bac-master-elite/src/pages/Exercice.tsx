@@ -94,6 +94,7 @@ export default function Exercice() {
   const [timerActive, setTimerActive] = useState(false);
   const [openFeedback, setOpenFeedback] = useState<Record<number, "correct" | "wrong" | null>>({});
   const [openResult, setOpenResult] = useState<Record<number, "correct" | "wrong" | null>>({});
+  const [openScore, setOpenScore] = useState(0);
 
   const exercise = useMemo<Exercise | undefined>(
     () => exercises.find((e) => e.id == exerciseId),
@@ -451,6 +452,7 @@ export default function Exercice() {
                     const matchCount = keywords.filter(k => answer.includes(k)).length;
                     const threshold = Math.ceil(keywords.length * 0.4);
                     const isCorrect = keywords.length === 0 ? true : matchCount >= threshold;
+                    if (isCorrect) setOpenScore(s => s + 1);
                     setOpenResult(prev => ({ ...prev, [openIndex]: isCorrect ? "correct" : "wrong" }));
                     setOpenFeedback(prev => ({ ...prev, [openIndex]: isCorrect ? "correct" : "wrong" }));
                     setShowCorrection(prev => ({ ...prev, [openIndex]: true }));
@@ -485,11 +487,24 @@ export default function Exercice() {
                     if (isLastOpen) {
                       setExtremePhase("done");
                       setCompleted(true);
+                      const totalScore = score + (isCorrect ? openScore + 1 : openScore);
+                      const totalQuestions2 = totalQuestions + openQuestions.length;
                       if (user?.id) {
-                        supabase.rpc("increment_user_points", {
-                          uid: user.id,
-                          pts: points,
-                        });
+                        Promise.all([
+                          supabase.from("user_exercise_progress").upsert({
+                            user_id: user.id,
+                            exercise_id: exerciseId,
+                            status: "completed",
+                            score: Math.round((totalScore / totalQuestions2) * 100),
+                            completed: true,
+                            completed_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }, { onConflict: "user_id,exercise_id" }),
+                          supabase.rpc("increment_user_points", {
+                            uid: user.id,
+                            pts: totalScore,
+                          }),
+                        ]);
                       }
                     } else {
                       setOpenIndex(i => i + 1);
