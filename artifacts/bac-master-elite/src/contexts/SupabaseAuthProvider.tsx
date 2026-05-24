@@ -99,48 +99,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       signIn: async (email, password) => {
-        const MAX_ATTEMPTS = 5;
-        const BLOCK_MINUTES = 15;
-
-        // Vérifier le blocage brute-force
-        const since = new Date(Date.now() - BLOCK_MINUTES * 60 * 1000).toISOString();
-        const { count } = await supabase
-          .from("login_attempts")
-          .select("*", { count: "exact", head: true })
-          .eq("email", email)
-          .eq("success", false)
-          .gte("attempted_at", since);
-
-        if ((count ?? 0) >= MAX_ATTEMPTS) {
-          return { error: `Trop de tentatives échouées. Réessaie dans ${BLOCK_MINUTES} minutes.` };
-        }
-
-        // Vérifier si l'email existe
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("email", email)
-          .maybeSingle();
-
-        if (!profile) {
-          await supabase.from("login_attempts").insert({ email, success: false });
-          return { error: "Aucun compte trouvé pour cet email." };
-        }
-
-        // Tenter la connexion
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-
-        if (error) {
-          await supabase.from("login_attempts").insert({ email, success: false });
-          return { error: "Mot de passe incorrect." };
-        }
-
-        // Succès : effacer les tentatives
-        await supabase.from("login_attempts").delete().eq("email", email);
-        return { error: null };
+        return { error: error?.message ?? null };
       },
       signUp: async (email, password, metadata) => {
         const { data, error } = await supabase.auth.signUp({
