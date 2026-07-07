@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import compression from "vite-plugin-compression";
 
 const rawPort = process.env.PORT;
 
@@ -32,6 +33,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    compression({ algorithm: "gzip", ext: ".gz" }),
+    compression({ algorithm: "brotliCompress", ext: ".br" }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -57,12 +60,28 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    cssCodeSplit: true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info'],
+      },
+    },
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          router: ["wouter"],
-          ui: ["@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu"],
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) return 'react-core';
+            if (id.includes('wouter')) return 'router';
+            if (id.includes('@radix-ui') || id.includes('@headlessui')) return 'ui-lib';
+            if (id.includes('@supabase')) return 'supabase';
+            if (id.includes('lucide')) return 'icons';
+            if (id.includes('recharts') || id.includes('d3')) return 'charts';
+            return 'vendor';
+          }
         },
       },
     },
