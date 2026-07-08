@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Redirect } from "wouter";
-import { ShieldCheck, Activity, ReceiptText, Loader2 } from "lucide-react";
+import { Redirect, Link } from "wouter";
+import { ShieldCheck, Activity, ReceiptText, Loader2, FileText } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile } from "@/lib/queries";
@@ -58,6 +58,16 @@ export default function Admin() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <div className="flex justify-end">
+          <Link
+            href="/dashboard/admin/blog"
+            className="flex items-center gap-1.5 rounded-lg bg-hero-gradient px-4 py-2 text-sm font-medium text-white"
+            data-testid="link-gerer-blog"
+          >
+            <FileText className="h-4 w-4" /> Gérer le blog
+          </Link>
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}

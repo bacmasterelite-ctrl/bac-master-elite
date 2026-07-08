@@ -24,6 +24,7 @@ const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Admin = lazy(() => import("@/pages/Admin"));
+const AdminBlog = lazy(() => import("@/pages/AdminBlog"));
 const Success = lazy(() => import("@/pages/Success"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 import NotFound from "@/pages/not-found";
@@ -34,6 +35,8 @@ const DefiElite = lazy(() => import("@/pages/DefiElite"));
 const MentionsLegales = lazy(() => import("@/pages/MentionsLegales"));
 const CGU = lazy(() => import("@/pages/CGU"));
 const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
@@ -153,7 +156,6 @@ function AppRoutes() {
       <Route path="/dashboard/quiz">
         <ProtectedRoute>
           <Quiz />
-              <Route path="/dashboard/flashcards" component={Flashcards} />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/defi-elite">
@@ -171,6 +173,11 @@ function AppRoutes() {
           <Admin />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/admin/blog">
+        <ProtectedRoute>
+          <AdminBlog />
+        </ProtectedRoute>
+      </Route>
 
       <Route path="/success">
         <Success />
@@ -181,6 +188,8 @@ function AppRoutes() {
       </Route>
 
       <Route path="/mentions-legales"><MentionsLegales /></Route>
+      <Route path="/blog"><Blog /></Route>
+      <Route path="/blog/:slug"><ArticleDetail /></Route>
       <Route path="/cgu"><CGU /></Route>
       <Route path="/confidentialite"><Confidentialite /></Route>
       <Route component={NotFound} />
