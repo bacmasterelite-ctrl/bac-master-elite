@@ -101,6 +101,7 @@ export default function Landing() {
             <a href="#series" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover-elevate">Séries</a>
             <a href="#features" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover-elevate">Fonctionnalités</a>
             <a href="#temoignages" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover-elevate">Témoignages</a>
+            <Link href="/blog" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover-elevate">Blog</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/login">
