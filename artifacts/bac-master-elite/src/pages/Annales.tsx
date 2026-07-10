@@ -20,6 +20,8 @@ type DisplayAnnal = {
   session: string;
   sujet_contenu: string;
   corrige_contenu: string;
+  sujet_pdf_url?: string;
+  corrige_pdf_url?: string;
   type_examen?: string;
 };
 
@@ -124,6 +126,8 @@ export default function Annales() {
           sujet_contenu: pickString(r, "sujet_contenu", "sujet", "subject_text"),
           corrige_contenu: pickString(r, "corrige_contenu", "corrige", "correction"),
           type_examen: pickString(r, "type_examen", "type", "exam_type"),
+          sujet_pdf_url: pickString(r, "sujet_pdf_url"),
+          corrige_pdf_url: pickString(r, "corrige_pdf_url"),
         };
       })
       .filter((a) => isAllowedForSerie(a.matiere, allowedSubjects));
@@ -147,6 +151,11 @@ export default function Annales() {
 
   const handleDownload = (a: DisplayAnnal, kind: "sujet" | "corrige") => {
     if (!isPremium) return;
+    const pdfUrl = kind === "sujet" ? a.sujet_pdf_url : a.corrige_pdf_url;
+    if (pdfUrl) {
+      window.open(pdfUrl, "_blank");
+      return;
+    }
     // Tracker la consultation dans annal_progress
     if (user?.id) {
       supabase.from("annal_progress").upsert({

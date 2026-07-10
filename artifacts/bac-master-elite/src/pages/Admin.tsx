@@ -66,6 +66,13 @@ export default function Admin() {
           >
             <FileText className="h-4 w-4" /> Gérer le blog
           </Link>
+          <Link
+            href="/dashboard/admin/annales"
+            className="flex items-center gap-1.5 rounded-lg bg-hero-gradient px-4 py-2 text-sm font-medium text-white"
+            data-testid="link-gerer-annales"
+          >
+            Gérer les annales
+          </Link>
         </div>
 
         <motion.div
