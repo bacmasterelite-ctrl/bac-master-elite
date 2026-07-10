@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Redirect } from "wouter";
-import { Loader2, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, X, Camera, FileText as FileIcon } from "lucide-react";
+import { useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile } from "@/lib/queries";
@@ -23,6 +24,18 @@ type Article = {
 
 type Categorie = { id: string; nom: string; slug: string };
 
+async function uploadImageArticle(file: File): Promise<string | null> {
+  const ext = file.name.split(".").pop();
+  const path = `article-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("blog-images").upload(path, file);
+  if (error) {
+    alert("Erreur upload : " + error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from("blog-images").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 function genererSlug(texte: string) {
   return texte
     .toLowerCase()
@@ -41,6 +54,17 @@ export default function AdminBlog() {
   const [editing, setEditing] = useState<Article | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    const url = await uploadImageArticle(file);
+    if (url) setForm((f) => ({ ...f, image_couverture: url }));
+    setUploadingImage(false);
+  }
 
   const [form, setForm] = useState({
     titre: "",
@@ -211,13 +235,32 @@ export default function AdminBlog() {
                 rows={8}
                 data-testid="input-contenu"
               />
-              <input
-                placeholder="URL image de couverture"
-                value={form.image_couverture}
-                onChange={(e) => setForm({ ...form, image_couverture: e.target.value })}
-                className="w-full rounded-lg border border-border px-3 py-2 text-sm"
-                data-testid="input-image"
-              />
+              {form.image_couverture ? (
+                <div className="mb-2 flex items-center justify-between rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                  <span className="flex items-center gap-1.5"><FileIcon className="h-4 w-4" /> Image ajoutée</span>
+                  <button type="button" onClick={() => setForm({ ...form, image_couverture: "" })} className="text-xs underline">Retirer</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileImage}
+                    className="hidden"
+                    data-testid="input-file-image"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground hover-elevate"
+                  >
+                    {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    {uploadingImage ? "Envoi..." : "Photo ou image de couverture"}
+                  </button>
+                </div>
+              )}
               <select
                 value={form.categorie_id}
                 onChange={(e) => setForm({ ...form, categorie_id: e.target.value })}

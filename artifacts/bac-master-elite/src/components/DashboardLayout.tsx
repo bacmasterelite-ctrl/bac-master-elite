@@ -19,6 +19,7 @@ import {
   Compass,
   Lightbulb,
   Users as UsersIcon,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/dashboard/annales", label: "Annales", icon: ScrollText },
   { href: "/dashboard/methodologie", label: "Méthodologie", icon: Compass },
   { href: "/dashboard/astuces", label: "Astuces BAC", icon: Lightbulb },
+  { href: "/dashboard/blog", label: "Blog", icon: FileText },
   { href: "/dashboard/tuteur-ia", label: "Tuteur IA", icon: Brain, badge: "IA" },
   { href: "/dashboard/quiz", label: "Quiz", icon: Sparkles, badge: "+pts" },
   { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen },

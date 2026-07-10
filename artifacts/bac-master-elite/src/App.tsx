@@ -38,6 +38,8 @@ const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 const AdminAnnales = lazy(() => import("@/pages/AdminAnnales"));
+const DashboardBlog = lazy(() => import("@/pages/DashboardBlog"));
+const DashboardArticleDetail = lazy(() => import("@/pages/DashboardArticleDetail"));
 import RefTracker from "@/components/RefTracker";
 
 const queryClient = new QueryClient({
@@ -182,6 +184,16 @@ function AppRoutes() {
       <Route path="/dashboard/admin/annales">
         <ProtectedRoute>
           <AdminAnnales />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/blog">
+        <ProtectedRoute>
+          <DashboardBlog />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/blog/:slug">
+        <ProtectedRoute>
+          <DashboardArticleDetail />
         </ProtectedRoute>
       </Route>
 

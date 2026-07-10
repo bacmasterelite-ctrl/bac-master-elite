@@ -260,7 +260,6 @@ export default function AdminAnnales() {
                       ref={sujetInputRef}
                       type="file"
                       accept="application/pdf,image/*"
-                      capture="environment"
                       onChange={handleFileSujet}
                       className="hidden"
                       data-testid="input-file-sujet"
@@ -302,7 +301,6 @@ export default function AdminAnnales() {
                       ref={corrigeInputRef}
                       type="file"
                       accept="application/pdf,image/*"
-                      capture="environment"
                       onChange={handleFileCorrige}
                       className="hidden"
                       data-testid="input-file-corrige"
