@@ -24,10 +24,29 @@ type Article = {
 
 type Categorie = { id: string; nom: string; slug: string };
 
+async function compressImageArticle(file: File): Promise<File> {
+  const imageCompression = (await import("browser-image-compression")).default;
+  try {
+    const compressed = await imageCompression(file, {
+      maxWidthOrHeight: 1200,
+      maxSizeMB: 0.3,
+      fileType: "image/webp",
+      initialQuality: 0.8,
+      useWebWorker: true,
+    });
+    return compressed;
+  } catch (e) {
+    console.error("Compression échouée, upload du fichier original :", e);
+    return file;
+  }
+}
+
 async function uploadImageArticle(file: File): Promise<string | null> {
-  const ext = file.name.split(".").pop();
-  const path = `article-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("blog-images").upload(path, file);
+  const compressedFile = await compressImageArticle(file);
+  const path = `article-${Date.now()}.webp`;
+  const { error } = await supabase.storage.from("blog-images").upload(path, compressedFile, {
+    contentType: "image/webp",
+  });
   if (error) {
     alert("Erreur upload : " + error.message);
     return null;
