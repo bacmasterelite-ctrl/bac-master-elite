@@ -208,7 +208,7 @@ export default function AdminBlog() {
         const { data: publicUrlData } = supabase.storage.from("blog-images").getPublicUrl(path);
 
         const { error: updateError } = await supabase
-          .from("blog_articles")
+          .from("articles")
           .update({ image_couverture: publicUrlData.publicUrl })
           .eq("id", article.id);
         if (updateError) throw new Error(updateError.message);
