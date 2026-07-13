@@ -74,6 +74,8 @@ export default function AdminBlog() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [recompressing, setRecompressing] = useState(false);
+  const [recompressProgress, setRecompressProgress] = useState({ done: 0, total: 0 });
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -174,6 +176,58 @@ export default function AdminBlog() {
 
   if (!profile?.is_admin) return <Redirect to="/dashboard" />;
 
+  async function recompressAllImages() {
+    const targets = articles.filter((a) => a.image_couverture);
+    if (targets.length === 0) {
+      alert("Aucun article avec image à recompresser.");
+      return;
+    }
+    if (!confirm(`Recompresser ${targets.length} image(s) d'article ? Cela peut prendre quelques minutes.`)) {
+      return;
+    }
+    setRecompressing(true);
+    setRecompressProgress({ done: 0, total: targets.length });
+
+    let success = 0;
+    let failed = 0;
+
+    for (const article of targets) {
+      try {
+        const res = await fetch(article.image_couverture as string);
+        if (!res.ok) throw new Error("fetch failed");
+        const blob = await res.blob();
+        const originalFile = new File([blob], "original", { type: blob.type || "image/jpeg" });
+
+        const compressedFile = await compressImageArticle(originalFile);
+        const path = `article-${article.id}-recompressed-${Date.now()}.webp`;
+        const { error: uploadError } = await supabase.storage
+          .from("blog-images")
+          .upload(path, compressedFile, { contentType: "image/webp" });
+        if (uploadError) throw new Error(uploadError.message);
+
+        const { data: publicUrlData } = supabase.storage.from("blog-images").getPublicUrl(path);
+
+        const { error: updateError } = await supabase
+          .from("blog_articles")
+          .update({ image_couverture: publicUrlData.publicUrl })
+          .eq("id", article.id);
+        if (updateError) throw new Error(updateError.message);
+
+        setArticles((prev) =>
+          prev.map((a) => (a.id === article.id ? { ...a, image_couverture: publicUrlData.publicUrl } : a))
+        );
+        success++;
+      } catch (e) {
+        console.error(`Échec recompression article ${article.id} :`, e);
+        failed++;
+      }
+      setRecompressProgress((p) => ({ ...p, done: p.done + 1 }));
+    }
+
+    setRecompressing(false);
+    alert(`Terminé. Succès : ${success}, Échecs : ${failed}`);
+  }
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-5xl px-4 py-8">
@@ -186,7 +240,22 @@ export default function AdminBlog() {
           >
             <Plus className="h-4 w-4" /> Nouvel article
           </button>
-        </div>
+        <button
+                onClick={recompressAllImages}
+                disabled={recompressing}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium hover-elevate disabled:opacity-50"
+                data-testid="button-recompress-images"
+              >
+                {recompressing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {recompressProgress.done}/{recompressProgress.total}
+                  </>
+                ) : (
+                  <>Recompresser les images</>
+                )}
+              </button>
+            </div>
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
