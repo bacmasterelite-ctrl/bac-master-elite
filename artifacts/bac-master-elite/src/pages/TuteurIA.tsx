@@ -23,7 +23,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import PremiumLimitModal from "@/components/PremiumLimitModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput } from "@/lib/gemini";
+import { getAIResponse, isGeminiConfigured, fileToBase64, type ImageInput, type ChatHistoryItem } from "@/lib/gemini";
 import { useAuth } from "@/contexts/SupabaseAuthProvider";
 import { useProfile, usePremiumStatus, useIncrementAIQuestion } from "@/lib/queries";
 import { useDailyAILimit, FREE_AI_DAILY_LIMIT } from "@/lib/premium";
@@ -46,6 +46,7 @@ const SUGGESTIONS = [
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_MIMES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_HISTORY_MESSAGES = 12;
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -99,7 +100,6 @@ export default function TuteurIA() {
 
   const configured = isGeminiConfigured();
 
-  // Build the welcome message reactively (depends on premium status + serie)
   useEffect(() => {
     setMessages([
       {
@@ -110,7 +110,6 @@ export default function TuteurIA() {
           : `Bonjour ! Je suis votre **professeur ivoirien IA** pour la **Série ${serie}**.\n\nEn formule **gratuite**, vous avez ${FREE_AI_DAILY_LIMIT} questions par jour. Pour des questions illimitées et l'analyse de photos d'exercices, passez **Premium** 👑.`,
       },
     ]);
-    // We intentionally re-init when premium status flips
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPremium, serie]);
 
@@ -176,6 +175,13 @@ export default function TuteurIA() {
       }
     }
 
+    // Build conversation history BEFORE adding the new user message,
+    // so the model receives everything that came before this turn.
+    const historyForModel: ChatHistoryItem[] = messages
+      .filter((m) => !m.error)
+      .slice(-MAX_HISTORY_MESSAGES)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     const promptForUser = trimmed || (image ? "Aide-moi avec cet exercice." : "");
     const userMsg: Message = {
       id: uid(),
@@ -193,7 +199,7 @@ export default function TuteurIA() {
       const contextual = `Élève en Série ${serie}. ${
         image ? "Voici une photo qu'il/elle envoie. " : ""
       }Question : ${promptForUser}`;
-      const reply = await getAIResponse(contextual, image);
+      const reply = await getAIResponse(contextual, image, historyForModel);
       setMessages((m) => [...m, { id: uid(), role: "ai", content: reply }]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue.";

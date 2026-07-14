@@ -11,7 +11,9 @@ Règles de fond :
 - Utilise un vocabulaire adapté aux élèves ivoiriens, conformément au programme officiel du BAC ivoirien.
 - Structure : définition courte → explication → exemple concret → conseil pour le BAC.
 - Si la question est hors sujet scolaire, recentre poliment.
-- Limite tes réponses à ~300 mots sauf si l'élève demande un développement.
+- Quand l'élève demande d'expliquer ou de détailler un cours entier, développe-le complètement, du début à la fin, avec toutes les sous-parties nécessaires (définitions, théorèmes, démonstrations, exemples, exercices d'application). Ne t'arrête jamais au milieu d'une explication et ne résume pas artificiellement pour raccourcir : va jusqu'au bout du raisonnement.
+- Pour les questions courtes et simples, une réponse concise suffit. Adapte la longueur à la complexité réelle de la question, pas à une limite arbitraire.
+- Tu as accès à l'historique de la conversation : appuie-toi dessus pour comprendre le contexte, éviter de te répéter, et poursuivre logiquement ce qui a déjà été expliqué.
 
 Règles spécifiques aux PHOTOS d'exercices ou de cours :
 - Décris d'abord ce que tu vois dans la photo (l'énoncé, le schéma, la formule…).
@@ -31,10 +33,17 @@ Règles de mise en forme (TRÈS IMPORTANT) :
 - Sépare les sections par une ligne vide pour une lecture aérée.`;
 
 const MODEL_CHAIN = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
+const MAX_OUTPUT_TOKENS = 8192;
+const RETRY_DELAY_MS = 1500;
 
 export type ImageInput = {
   base64: string;
   mimeType: string;
+};
+
+export type ChatHistoryItem = {
+  role: "user" | "ai";
+  content: string;
 };
 
 let cachedClient: GoogleGenerativeAI | null = null;
@@ -48,7 +57,37 @@ function getClient() {
   return cachedClient;
 }
 
-async function getGroqResponse(prompt: string): Promise<string> {
+function toGeminiHistory(history: ChatHistoryItem[]) {
+  return history
+    .filter((h) => h.content && h.content.trim().length > 0)
+    .map((h) => ({
+      role: h.role === "user" ? "user" : "model",
+      parts: [{ text: h.content }],
+    }));
+}
+
+function toOpenAIStyleMessages(history: ChatHistoryItem[]) {
+  return history
+    .filter((h) => h.content && h.content.trim().length > 0)
+    .map((h) => ({
+      role: h.role === "user" ? "user" : "assistant",
+      content: h.content,
+    }));
+}
+
+function isRetryableError(message: string) {
+  return /timeout|network|fetch failed|ECONNRESET|502|503|504|overloaded/i.test(message);
+}
+
+function isModelSwapError(message: string) {
+  return /not.?found|404|unavailable|deprecated|model/i.test(message);
+}
+
+function isQuotaError(message: string) {
+  return /quota|rate|429/i.test(message);
+}
+
+async function getGroqResponse(prompt: string, history: ChatHistoryItem[]): Promise<string> {
   if (!groqKey) throw new Error("Clé Groq absente");
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -57,13 +96,14 @@ async function getGroqResponse(prompt: string): Promise<string> {
       Authorization: `Bearer ${groqKey}`,
     },
     body: JSON.stringify({
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
+        ...toOpenAIStyleMessages(history),
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: 4096,
     }),
   });
   if (!res.ok) {
@@ -76,7 +116,7 @@ async function getGroqResponse(prompt: string): Promise<string> {
   return text.trim();
 }
 
-async function getOpenRouterResponse(prompt: string): Promise<string> {
+async function getOpenRouterResponse(prompt: string, history: ChatHistoryItem[]): Promise<string> {
   if (!openrouterKey) throw new Error("Clé OpenRouter absente");
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -90,10 +130,11 @@ async function getOpenRouterResponse(prompt: string): Promise<string> {
       model: "mistralai/mistral-7b-instruct:free",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
+        ...toOpenAIStyleMessages(history),
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: 4096,
     }),
   });
   if (!res.ok) {
@@ -106,7 +147,11 @@ async function getOpenRouterResponse(prompt: string): Promise<string> {
   return text.trim();
 }
 
-export async function getAIResponse(prompt: string, image?: ImageInput): Promise<string> {
+export async function getAIResponse(
+  prompt: string,
+  image?: ImageInput,
+  history: ChatHistoryItem[] = [],
+): Promise<string> {
   if (apiKey) {
     const client = getClient();
     const parts: Part[] = [];
@@ -116,28 +161,44 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
     parts.push({ text: prompt });
 
     for (const modelName of MODEL_CHAIN) {
-      try {
-        const model = client.getGenerativeModel({
-          model: modelName,
-          systemInstruction: SYSTEM_PROMPT,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
-        });
-        const result = await model.generateContent(parts);
-        const text = result.response.text();
-        if (text && text.trim().length > 0) return text.trim();
-        throw new Error("Réponse vide du modèle");
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error(`[Tuteur IA] Échec "${modelName}" :`, message);
-        if (!/not.?found|404|unavailable|deprecated|model/i.test(message)) {
-          console.warn("[Tuteur IA] Erreur non-modèle, bascule vers fallback…");
+      let attempt = 0;
+      const maxAttempts = 2;
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          const model = client.getGenerativeModel({
+            model: modelName,
+            systemInstruction: SYSTEM_PROMPT,
+            generationConfig: { temperature: 0.7, maxOutputTokens: MAX_OUTPUT_TOKENS },
+          });
+          const chat = model.startChat({ history: toGeminiHistory(history) });
+          const result = await chat.sendMessage(parts);
+          const text = result.response.text();
+          if (text && text.trim().length > 0) return text.trim();
+          throw new Error("Réponse vide du modèle");
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[Tuteur IA] Échec "${modelName}" (tentative ${attempt}) :`, message);
+
+          if (isQuotaError(message)) {
+            await new Promise((r) => setTimeout(r, 3000));
+            break;
+          }
+          if (isRetryableError(message) && attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+            continue;
+          }
+          if (isModelSwapError(message)) {
+            break;
+          }
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+            continue;
+          }
           break;
         }
-        if (/quota|rate|429/i.test(message)) {
-          await new Promise((r) => setTimeout(r, 3000));
-        }
-        console.warn("[Tuteur IA] Bascule vers le modèle suivant…");
       }
+      console.warn("[Tuteur IA] Bascule vers le modèle suivant…");
     }
     console.warn("[Tuteur IA] Tous les modèles Gemini ont échoué.");
   }
@@ -149,7 +210,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
   if (groqKey) {
     try {
       console.warn("[Tuteur IA] Bascule vers Groq…");
-      const reply = await getGroqResponse(promptTextOnly);
+      const reply = await getGroqResponse(promptTextOnly, history);
       console.log("[Tuteur IA] ✅ Réponse via Groq");
       return reply;
     } catch (err) {
@@ -160,7 +221,7 @@ export async function getAIResponse(prompt: string, image?: ImageInput): Promise
   if (openrouterKey) {
     try {
       console.warn("[Tuteur IA] Bascule vers OpenRouter…");
-      const reply = await getOpenRouterResponse(promptTextOnly);
+      const reply = await getOpenRouterResponse(promptTextOnly, history);
       console.log("[Tuteur IA] ✅ Réponse via OpenRouter");
       return reply;
     } catch (err) {
