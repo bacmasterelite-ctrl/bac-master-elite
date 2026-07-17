@@ -33,6 +33,7 @@ const Flashcards = lazy(() => import("@/pages/Flashcards"));
 const Parrainage = lazy(() => import("@/pages/Parrainage"));
 const DefiElite = lazy(() => import("@/pages/DefiElite"));
 const MentionsLegales = lazy(() => import("@/pages/MentionsLegales"));
+const Contact = lazy(() => import("@/pages/Contact"));
 const CGU = lazy(() => import("@/pages/CGU"));
 const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
 const Blog = lazy(() => import("@/pages/Blog"));
@@ -41,6 +42,7 @@ const AdminAnnales = lazy(() => import("@/pages/AdminAnnales"));
 const DashboardBlog = lazy(() => import("@/pages/DashboardBlog"));
 const DashboardArticleDetail = lazy(() => import("@/pages/DashboardArticleDetail"));
 import RefTracker from "@/components/RefTracker";
+import CookieBanner from "@/components/CookieBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -206,6 +208,7 @@ function AppRoutes() {
       </Route>
 
       <Route path="/mentions-legales"><MentionsLegales /></Route>
+		<Route path="/contact"><Contact /></Route>
       <Route path="/blog"><Blog /></Route>
       <Route path="/blog/:slug"><ArticleDetail /></Route>
       <Route path="/cgu"><CGU /></Route>
@@ -225,6 +228,7 @@ function App() {
             <AppRoutes />
           </WouterRouter>
           <Toaster />
+          <CookieBanner />
         </TooltipProvider>
       </SupabaseAuthProvider>
     </QueryClientProvider>
