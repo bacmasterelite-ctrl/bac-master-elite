@@ -7,7 +7,7 @@ export default function MentionsLegales() {
         <div style={{textAlign:"center", marginBottom:"2.5rem"}}>
           <span style={{display:"inline-block", background:"#4f46e5", color:"#fff", fontSize:"0.65rem", fontWeight:700, padding:"0.2rem 0.75rem", borderRadius:"999px", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.75rem"}}>Section 1</span>
           <h1 style={{fontSize:"1.8rem", fontWeight:800, color:"#4f46e5", marginBottom:"0.25rem"}}>Mentions Légales</h1>
-          <p style={{fontSize:"0.8rem", color:"#9ca3af"}}>Application BAC MASTER ELITE — Dernière mise à jour : Mai 2025</p>
+          <p style={{fontSize:"0.8rem", color:"#9ca3af"}}>Application BAC MASTER ELITE — Dernière mise à jour : Juillet 2026</p>
         </div>
 
         {[
@@ -15,12 +15,15 @@ export default function MentionsLegales() {
             titre: "Article 1 — Identification de l'Éditeur",
             contenu: (
               <>
-                <p style={{lineHeight:1.8, marginBottom:"0.75rem"}}>L'application mobile et web <strong>BAC MASTER ELITE</strong> est éditée à titre personnel par son créateur, personne physique résidant en République de Côte d'Ivoire, ci-après dénommé « l'Éditeur ».</p>
+                <p style={{lineHeight:1.8, marginBottom:"0.75rem"}}>L'application mobile et web <strong>BAC MASTER ELITE</strong> est éditée par :</p>
                 <div style={{background:"#eef2ff", borderRadius:"0.75rem", padding:"1rem 1.25rem", fontSize:"0.9rem", lineHeight:2}}>
                   <div><strong>Dénomination :</strong> BAC MASTER ELITE</div>
+                  <div><strong>Nom de l'éditeur :</strong> Dominique Ouedraogo</div>
                   <div><strong>Statut juridique :</strong> Éditeur individuel (personne physique)</div>
-                  <div><strong>RCCM / IDU :</strong> <em style={{color:"#9ca3af"}}>En cours d'immatriculation</em></div>
-                  <div><strong>Contact :</strong> <a href="mailto:bacmasterelite@gmail.com" style={{color:"#4f46e5"}}>bacmasterelite@gmail.com</a></div>
+                  <div><strong>Adresse :</strong> Quartier Tazibouo, près du Commissariat de police 4, Daloa, Côte d'Ivoire</div>
+                  <div><strong>RCCM / IDU :</strong> En cours d'immatriculation</div>
+                  <div><strong>Email :</strong> <a href="mailto:bacmasterelite@gmail.com" style={{color:"#4f46e5"}}>bacmasterelite@gmail.com</a></div>
+                  <div><strong>Téléphone :</strong> 05 01 74 04 25</div>
                 </div>
               </>
             )
@@ -39,15 +42,60 @@ export default function MentionsLegales() {
           },
           {
             titre: "Article 3 — Propriété Intellectuelle",
-            contenu: <p style={{lineHeight:1.8}}>L'ensemble des contenus de l'Application — cours, fiches de révision, exercices, algorithmes pédagogiques, graphismes et interfaces — sont la propriété exclusive de l'Éditeur et protégés par les lois ivoiriennes et internationales. Toute reproduction non autorisée est interdite sous peine de poursuites judiciaires.</p>
+            contenu: (
+              <>
+                <p style={{lineHeight:1.8}}>L'ensemble des contenus de l'Application — cours, fiches de révision, exercices, algorithmes pédagogiques, graphismes, logos, interfaces et tous les éléments composant l'Application — sont la propriété exclusive de l'Éditeur et protégés par les lois ivoiriennes et internationales sur la propriété intellectuelle.</p>
+                <p style={{lineHeight:1.8, marginTop:"0.75rem"}}>Toute reproduction, représentation, modification, publication, adaptation, totale ou partielle, sur quelque support que ce soit, est interdite sans l'autorisation préalable écrite de l'Éditeur. Toute utilisation non autorisée constitue une contrefaçon et peut donner lieu à des poursuites judiciaires.</p>
+              </>
+            )
           },
           {
-            titre: "Article 4 — Responsabilité",
-            contenu: <p style={{lineHeight:1.8}}>L'Éditeur s'efforce de fournir des informations pédagogiques exactes et actualisées. Il ne pourra être tenu responsable des erreurs ou omissions dans les contenus, ni des dommages résultant de l'utilisation de l'Application. L'Éditeur se réserve le droit de modifier ou supprimer tout contenu à tout moment.</p>
+            titre: "Article 4 — Limitation de Responsabilité",
+            contenu: (
+              <>
+                <p style={{lineHeight:1.8}}>L'Éditeur s'efforce de fournir des informations pédagogiques exactes et actualisées. Il ne pourra être tenu responsable :</p>
+                <ul style={{lineHeight:1.8, paddingLeft:"1.5rem", marginTop:"0.5rem"}}>
+                  <li>Des erreurs ou omissions dans les contenus,</li>
+                  <li>Des dommages directs ou indirects résultant de l'utilisation de l'Application,</li>
+                  <li>Des indisponibilités temporaires ou définitives de l'Application,</li>
+                  <li>De l'utilisation des informations fournies par des tiers via l'Application.</li>
+                </ul>
+                <p style={{lineHeight:1.8, marginTop:"0.75rem"}}>L'Éditeur se réserve le droit de modifier, suspendre ou interrompre tout contenu ou fonctionnalité de l'Application à tout moment, sans préavis.</p>
+              </>
+            )
           },
           {
-            titre: "Article 5 — Droit Applicable",
-            contenu: <p style={{lineHeight:1.8}}>Les présentes Mentions Légales sont régies par le droit ivoirien. Tout litige relève de la compétence exclusive des juridictions compétentes de la République de Côte d'Ivoire.</p>
+            titre: "Article 5 — Données Personnelles et Cookies",
+            contenu: (
+              <>
+                <p style={{lineHeight:1.8}}>L'Application est conforme au Règlement Général sur la Protection des Données (RGPD) et à la législation ivoirienne relative à la protection des données personnelles.</p>
+                <p style={{lineHeight:1.8, marginTop:"0.75rem"}}>Les données collectées sont limitées à ce qui est strictement nécessaire au fonctionnement de l'Application (email, nom, progression pédagogique).</p>
+                <p style={{lineHeight:1.8, marginTop:"0.75rem"}}><strong>Cookies :</strong> L'Application utilise des cookies techniques nécessaires à son bon fonctionnement. Des cookies de mesure d'audience peuvent également être utilisés. Vous pouvez à tout moment gérer vos préférences de cookies.</p>
+                <p style={{lineHeight:1.8, marginTop:"0.75rem"}}>Pour plus d'informations, consultez notre <a href="/politique-confidentialite" style={{color:"#4f46e5"}}>Politique de Confidentialité</a>.</p>
+              </>
+            )
+          },
+          {
+            titre: "Article 6 — Acceptation des Conditions",
+            contenu: (
+              <p style={{lineHeight:1.8}}>En utilisant l'Application BAC MASTER ELITE, vous acceptez pleinement les présentes Mentions Légales. Si vous n'acceptez pas ces conditions, nous vous invitons à ne pas utiliser l'Application.</p>
+            )
+          },
+          {
+            titre: "Article 7 — Droit Applicable et Juridiction",
+            contenu: (
+              <p style={{lineHeight:1.8}}>Les présentes Mentions Légales sont régies par le droit ivoirien. En cas de litige, une solution amiable sera recherchée avant toute procédure judiciaire. À défaut, les tribunaux compétents de la République de Côte d'Ivoire seront seuls compétents.</p>
+            )
+          },
+          {
+            titre: "Article 8 — Contact",
+            contenu: (
+              <div style={{background:"#eef2ff", borderRadius:"0.75rem", padding:"1rem 1.25rem", fontSize:"0.9rem", lineHeight:2}}>
+                <div>Pour toute question relative aux présentes Mentions Légales, vous pouvez nous contacter :</div>
+                <div><strong>Email :</strong> <a href="mailto:bacmasterelite@gmail.com" style={{color:"#4f46e5"}}>bacmasterelite@gmail.com</a></div>
+                <div><strong>Formulaire de contact :</strong> <a href="/contact" style={{color:"#4f46e5"}}>Disponible sur le site</a></div>
+              </div>
+            )
           }
         ].map((art, i) => (
           <section key={i} style={{marginBottom:"2rem"}}>
