@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { Calendar, ArrowLeft, Languages } from "lucide-react";
+import { Calendar, ArrowLeft } from "lucide-react";
+// Languages icon temporarily unused — translation link hidden until EN articles exist in DB
+// import { Languages } from "lucide-react";
 
 type Article = {
   id: string;
@@ -29,7 +31,8 @@ export default function ArticleDetail() {
   const { slug } = useParams();
   const [article, setArticle] = useState<Article | null>(null);
   const [similaires, setSimilaires] = useState<Article[]>([]);
-  const [articleLie, setArticleLie] = useState<ArticleLie | null>(null);
+  // articleLie temporarily disabled — all article_lie_id are null (no EN articles in DB)
+  // const [articleLie, setArticleLie] = useState<ArticleLie | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,17 +64,14 @@ export default function ArticleDetail() {
           setSimilaires(sim || []);
         }
 
-        if (data.article_lie_id) {
-          const { data: lie } = await supabase
-            .from("articles")
-            .select("slug, titre, langue")
-            .eq("id", data.article_lie_id)
-            .eq("statut", "publie")
-            .single();
-          setArticleLie(lie || null);
-        } else {
-          setArticleLie(null);
-        }
+        // Translation link fetch temporarily disabled — no EN articles in DB, article_lie_id always null.
+        // Re-enable once bilingual content exists:
+        // if (data.article_lie_id) {
+        //   const { data: lie } = await supabase
+        //     .from("articles").select("slug, titre, langue")
+        //     .eq("id", data.article_lie_id).eq("statut", "publie").single();
+        //   setArticleLie(lie || null);
+        // } else { setArticleLie(null); }
 
         document.title = data.meta_titre || `${data.titre} - BAC Master Elite`;
         document.documentElement.lang = data.langue || "fr";
@@ -161,18 +161,18 @@ export default function ArticleDetail() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            {new Date(article.created_at).toLocaleDateString(article.langue === "fr" ? "fr-FR" : "en-US")}
+            {new Date(article.created_at).toLocaleDateString("fr-FR")}
           </div>
+          {/* Translation link hidden — re-enable with articleLie state + fetch once EN articles exist
           {articleLie && (
-            <Link
-              href={`/blog/${articleLie.slug}`}
+            <Link href={`/blog/${articleLie.slug}`}
               className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium hover-elevate"
-              data-testid="link-translation"
-            >
+              data-testid="link-translation">
               <Languages className="h-3.5 w-3.5" />
               {articleLie.langue === "en" ? "Read in English" : "Lire en français"}
             </Link>
           )}
+          */}
         </div>
         <h1 className="mt-3 text-3xl font-extrabold leading-tight sm:text-4xl">{article.titre}</h1>
 
@@ -201,7 +201,7 @@ export default function ArticleDetail() {
       {similaires.length > 0 && (
         <section className="mx-auto max-w-3xl px-4 pb-16 sm:px-6 lg:px-8">
           <h2 className="text-xl font-bold">
-            {article.langue === "fr" ? "Articles similaires" : "Related articles"}
+            Articles similaires
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {similaires.map((sim) => (

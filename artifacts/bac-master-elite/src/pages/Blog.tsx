@@ -24,12 +24,14 @@ export default function Blog() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [categorieActive, setCategorieActive] = useState<string | null>(null);
-  const [langue, setLangue] = useState<"fr" | "en">("fr");
+  // FR/EN switcher temporarily disabled — no English articles in DB yet (all 57 articles are French).
+  // Re-enable by uncommenting below and restoring the switcher UI + .eq("langue", langue) in the query.
+  // const [langue, setLangue] = useState<"fr" | "en">("fr");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = langue === "fr" ? "Blog - BAC Master Elite" : "Blog - BAC Master Elite (English)";
-  }, [langue]);
+    document.title = "Blog - BAC Master Elite";
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -41,7 +43,7 @@ export default function Blog() {
         .from("articles")
         .select("*")
         .eq("statut", "publie")
-        .eq("langue", langue)
+        .eq("langue", "fr") // hardcoded until EN articles are added to Supabase
         .order("published_at", { ascending: false });
 
       if (categorieActive) {
@@ -53,7 +55,7 @@ export default function Blog() {
       setLoading(false);
     }
     fetchData();
-  }, [categorieActive, langue]);
+  }, [categorieActive]); // removed: langue (switcher disabled)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -64,41 +66,27 @@ export default function Blog() {
               BAC <span className="text-hero-gradient">MASTER ELITE</span>
             </span>
           </Link>
-          <div className="flex items-center gap-1 rounded-full border border-border p-0.5 text-sm">
-            <button
-              onClick={() => setLangue("fr")}
-              className={`rounded-full px-3 py-1 font-medium transition ${
-                langue === "fr" ? "bg-hero-gradient text-white" : "text-muted-foreground"
-              }`}
-              data-testid="lang-fr"
-            >
-              FR
-            </button>
-            <button
-              onClick={() => setLangue("en")}
-              className={`rounded-full px-3 py-1 font-medium transition ${
-                langue === "en" ? "bg-hero-gradient text-white" : "text-muted-foreground"
-              }`}
-              data-testid="lang-en"
-            >
-              EN
-            </button>
-          </div>
+          {/*
+            TEMPORARILY HIDDEN — FR/EN language switcher.
+            Re-enable once English articles (langue='en') exist in Supabase.
+            Also restore: useState for langue, .eq("langue", langue), langue dependency, and all ternaries below.
+
+            <div className="flex items-center gap-1 rounded-full border border-border p-0.5 text-sm">
+              <button onClick={() => setLangue("fr")} data-testid="lang-fr"
+                className={`rounded-full px-3 py-1 font-medium transition ${langue === "fr" ? "bg-hero-gradient text-white" : "text-muted-foreground"}`}>FR</button>
+              <button onClick={() => setLangue("en")} data-testid="lang-en"
+                className={`rounded-full px-3 py-1 font-medium transition ${langue === "en" ? "bg-hero-gradient text-white" : "text-muted-foreground"}`}>EN</button>
+            </div>
+          */}
         </div>
       </header>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {langue === "fr" ? (
-            <>Le <span className="text-hero-gradient">Blog</span></>
-          ) : (
-            <>The <span className="text-hero-gradient">Blog</span></>
-          )}
+          Le <span className="text-hero-gradient">Blog</span>
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          {langue === "fr"
-            ? "Conseils, méthodologie et actualités pour réussir ton BAC."
-            : "Tips, methodology and news to help you succeed at the BAC."}
+          Conseils, méthodologie et actualités pour réussir ton BAC.
         </p>
 
         {/* Scrollable filter bar — no wrap, avoids 5+ lines stacking on 375px mobile */}
@@ -113,7 +101,7 @@ export default function Blog() {
               }`}
               data-testid="filter-all"
             >
-              {langue === "fr" ? "Tous" : "All"}
+              Tous
             </button>
             {categories.map((cat) => (
               <button
@@ -133,13 +121,9 @@ export default function Blog() {
         </div>
 
         {loading ? (
-          <p className="mt-12 text-center text-muted-foreground">
-            {langue === "fr" ? "Chargement..." : "Loading..."}
-          </p>
+          <p className="mt-12 text-center text-muted-foreground">Chargement...</p>
         ) : articles.length === 0 ? (
-          <p className="mt-12 text-center text-muted-foreground">
-            {langue === "fr" ? "Aucun article pour le moment." : "No articles yet."}
-          </p>
+          <p className="mt-12 text-center text-muted-foreground">Aucun article pour le moment.</p>
         ) : (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {articles.map((article) => (
@@ -157,14 +141,14 @@ export default function Blog() {
                   <div className="p-5">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
-                      {new Date(article.created_at).toLocaleDateString(langue === "fr" ? "fr-FR" : "en-US")}
+                      {new Date(article.created_at).toLocaleDateString("fr-FR")}
                     </div>
                     <h2 className="mt-2 text-lg font-bold leading-snug">{article.titre}</h2>
                     {article.extrait && (
                       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{article.extrait}</p>
                     )}
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                      {langue === "fr" ? "Lire la suite" : "Read more"} <ArrowRight className="h-3.5 w-3.5" />
+                      Lire la suite <ArrowRight className="h-3.5 w-3.5" />
                     </span>
                   </div>
                 </article>
