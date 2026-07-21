@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Pages principales -->
   <url>
     <loc>https://bac-master-elite.com/</loc>
     <changefreq>weekly</changefreq>
@@ -11,35 +12,12 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://bac-master-elite.com/blog/comment-reussir-son-bac</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://bac-master-elite.com/contact</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
-  <url>
-    <loc>https://bac-master-elite.com/blog/gerer-stress-avant-bac</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://bac-master-elite.com/blog/dates-calendrier-bac-cote-ivoire</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://bac-master-elite.com/blog/apres-bac-choisir-orientation</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://bac-master-elite.com/blog/astuces-pratiques-booster-revisions</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://bac-master-elite.com/blog/elevees-qui-reussissent-mention-bac</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
+
+  <!-- Pages légales -->
   <url>
     <loc>https://bac-master-elite.com/mentions-legales</loc>
     <changefreq>yearly</changefreq>
@@ -55,4 +33,7 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- Articles de blog (mis à jour dynamiquement via /api/sitemap) -->
+  <!-- Note: Le sitemap complet avec tous les articles est servi par /api/sitemap -->
 </urlset>

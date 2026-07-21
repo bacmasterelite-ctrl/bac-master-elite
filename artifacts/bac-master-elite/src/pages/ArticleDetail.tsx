@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { Calendar, ArrowLeft, Languages } from "lucide-react";
 
 type Article = {
   id: string;
@@ -15,12 +15,21 @@ type Article = {
   meta_description: string | null;
   meta_keywords: string | null;
   created_at: string;
+  langue: string;
+  article_lie_id: string | null;
+};
+
+type ArticleLie = {
+  slug: string;
+  titre: string;
+  langue: string;
 };
 
 export default function ArticleDetail() {
   const { slug } = useParams();
   const [article, setArticle] = useState<Article | null>(null);
   const [similaires, setSimilaires] = useState<Article[]>([]);
+  const [articleLie, setArticleLie] = useState<ArticleLie | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,9 +55,22 @@ export default function ArticleDetail() {
             .select("*")
             .eq("categorie_id", data.categorie_id)
             .eq("statut", "publie")
+            .eq("langue", data.langue)
             .neq("id", data.id)
             .limit(3);
           setSimilaires(sim || []);
+        }
+
+        if (data.article_lie_id) {
+          const { data: lie } = await supabase
+            .from("articles")
+            .select("slug, titre, langue")
+            .eq("id", data.article_lie_id)
+            .eq("statut", "publie")
+            .single();
+          setArticleLie(lie || null);
+        } else {
+          setArticleLie(null);
         }
 
         document.title = data.meta_titre || `${data.titre} - BAC Master Elite`;
@@ -75,8 +97,41 @@ export default function ArticleDetail() {
     );
   }
 
+  // JSON-LD Article structured data for Google quality signals
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": article.titre,
+    "description": article.extrait ?? article.meta_description ?? "",
+    "image": article.image_couverture ? [article.image_couverture] : ["https://bac-master-elite.com/og-image.png"],
+    "datePublished": article.created_at,
+    "dateModified": article.created_at,
+    "author": {
+      "@type": "Organization",
+      "name": "BAC Master Elite",
+      "url": "https://bac-master-elite.com"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "BAC Master Elite",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://bac-master-elite.com/logo-512.png"
+      }
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `https://bac-master-elite.com/blog/${article.slug}`
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* JSON-LD structured data injected into head */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5">
@@ -91,9 +146,21 @@ export default function ArticleDetail() {
       </header>
 
       <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          {new Date(article.created_at).toLocaleDateString("fr-FR")}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            {new Date(article.created_at).toLocaleDateString(article.langue === "fr" ? "fr-FR" : "en-US")}
+          </div>
+          {articleLie && (
+            <Link
+              href={`/blog/${articleLie.slug}`}
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium hover-elevate"
+              data-testid="link-translation"
+            >
+              <Languages className="h-3.5 w-3.5" />
+              {articleLie.langue === "en" ? "Read in English" : "Lire en français"}
+            </Link>
+          )}
         </div>
         <h1 className="mt-3 text-3xl font-extrabold leading-tight sm:text-4xl">{article.titre}</h1>
 
@@ -115,7 +182,9 @@ export default function ArticleDetail() {
 
       {similaires.length > 0 && (
         <section className="mx-auto max-w-3xl px-4 pb-16 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-bold">Articles similaires</h2>
+          <h2 className="text-xl font-bold">
+            {article.langue === "fr" ? "Articles similaires" : "Related articles"}
+          </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {similaires.map((sim) => (
               <Link key={sim.id} href={`/blog/${sim.slug}`}>

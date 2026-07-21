@@ -11,6 +11,7 @@ type Article = {
   image_couverture: string | null;
   created_at: string;
   categorie_id: string | null;
+  langue: string;
 };
 
 type Categorie = {
@@ -23,11 +24,12 @@ export default function Blog() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [categorieActive, setCategorieActive] = useState<string | null>(null);
+  const [langue, setLangue] = useState<"fr" | "en">("fr");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Blog - BAC Master Elite";
-  }, []);
+    document.title = langue === "fr" ? "Blog - BAC Master Elite" : "Blog - BAC Master Elite (English)";
+  }, [langue]);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,6 +41,7 @@ export default function Blog() {
         .from("articles")
         .select("*")
         .eq("statut", "publie")
+        .eq("langue", langue)
         .order("published_at", { ascending: false });
 
       if (categorieActive) {
@@ -50,7 +53,7 @@ export default function Blog() {
       setLoading(false);
     }
     fetchData();
-  }, [categorieActive]);
+  }, [categorieActive, langue]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -61,15 +64,41 @@ export default function Blog() {
               BAC <span className="text-hero-gradient">MASTER ELITE</span>
             </span>
           </Link>
+          <div className="flex items-center gap-1 rounded-full border border-border p-0.5 text-sm">
+            <button
+              onClick={() => setLangue("fr")}
+              className={`rounded-full px-3 py-1 font-medium transition ${
+                langue === "fr" ? "bg-hero-gradient text-white" : "text-muted-foreground"
+              }`}
+              data-testid="lang-fr"
+            >
+              FR
+            </button>
+            <button
+              onClick={() => setLangue("en")}
+              className={`rounded-full px-3 py-1 font-medium transition ${
+                langue === "en" ? "bg-hero-gradient text-white" : "text-muted-foreground"
+              }`}
+              data-testid="lang-en"
+            >
+              EN
+            </button>
+          </div>
         </div>
       </header>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          Le <span className="text-hero-gradient">Blog</span>
+          {langue === "fr" ? (
+            <>Le <span className="text-hero-gradient">Blog</span></>
+          ) : (
+            <>The <span className="text-hero-gradient">Blog</span></>
+          )}
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Conseils, méthodologie et actualités pour réussir ton BAC.
+          {langue === "fr"
+            ? "Conseils, méthodologie et actualités pour réussir ton BAC."
+            : "Tips, methodology and news to help you succeed at the BAC."}
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -82,7 +111,7 @@ export default function Blog() {
             }`}
             data-testid="filter-all"
           >
-            Tous
+            {langue === "fr" ? "Tous" : "All"}
           </button>
           {categories.map((cat) => (
             <button
@@ -101,9 +130,13 @@ export default function Blog() {
         </div>
 
         {loading ? (
-          <p className="mt-12 text-center text-muted-foreground">Chargement...</p>
+          <p className="mt-12 text-center text-muted-foreground">
+            {langue === "fr" ? "Chargement..." : "Loading..."}
+          </p>
         ) : articles.length === 0 ? (
-          <p className="mt-12 text-center text-muted-foreground">Aucun article pour le moment.</p>
+          <p className="mt-12 text-center text-muted-foreground">
+            {langue === "fr" ? "Aucun article pour le moment." : "No articles yet."}
+          </p>
         ) : (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {articles.map((article) => (
@@ -121,14 +154,14 @@ export default function Blog() {
                   <div className="p-5">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
-                      {new Date(article.created_at).toLocaleDateString("fr-FR")}
+                      {new Date(article.created_at).toLocaleDateString(langue === "fr" ? "fr-FR" : "en-US")}
                     </div>
                     <h2 className="mt-2 text-lg font-bold leading-snug">{article.titre}</h2>
                     {article.extrait && (
                       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{article.extrait}</p>
                     )}
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                      Lire la suite <ArrowRight className="h-3.5 w-3.5" />
+                      {langue === "fr" ? "Lire la suite" : "Read more"} <ArrowRight className="h-3.5 w-3.5" />
                     </span>
                   </div>
                 </article>

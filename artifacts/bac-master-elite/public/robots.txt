@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://bac-master-elite.com/sitemap.xml
+# Ne pas indexer les pages protégées (elles redirigent vers l'accueil)
+Disallow: /dashboard/
+
+# Sitemap complet avec tous les articles de blog
+Sitemap: https://bac-master-elite.com/api/sitemap

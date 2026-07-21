@@ -64,6 +64,18 @@ function FullPageSpinner() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+
+  // Tell crawlers not to index auth-gated pages (they see a redirect anyway)
+  if (typeof document !== "undefined") {
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "robots";
+      document.head.appendChild(meta);
+    }
+    meta.content = user ? "noindex,nofollow" : "noindex,nofollow";
+  }
+
   if (loading) return <FullPageSpinner />;
   if (!user) return <Redirect to="/" />;
   return <>{children}</>;
