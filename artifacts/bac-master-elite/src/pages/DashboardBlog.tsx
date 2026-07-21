@@ -49,10 +49,11 @@ export default function DashboardBlog() {
         <h1 className="text-2xl font-bold">Blog</h1>
         <p className="mt-1 text-sm text-muted-foreground">Conseils, méthodologie et actualités pour réussir ton BAC.</p>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        {/* Scrollable filter bar — single row on mobile, no wrapping */}
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           <button
             onClick={() => setCategorieActive(null)}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+            className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
               !categorieActive ? "bg-hero-gradient text-white border-transparent" : "border-border text-muted-foreground hover-elevate"
             }`}
           >
@@ -62,7 +63,7 @@ export default function DashboardBlog() {
             <button
               key={cat.id}
               onClick={() => setCategorieActive(cat.id)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
                 categorieActive === cat.id ? "bg-hero-gradient text-white border-transparent" : "border-border text-muted-foreground hover-elevate"
               }`}
             >

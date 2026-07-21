@@ -74,10 +74,22 @@ export default function ArticleDetail() {
         }
 
         document.title = data.meta_titre || `${data.titre} - BAC Master Elite`;
+        document.documentElement.lang = data.langue || "fr";
+
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc && data.meta_description) {
           metaDesc.setAttribute("content", data.meta_description);
         }
+
+        // hreflang: remove stale alternate links first, then inject fresh ones
+        document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
+
+        // Self-referencing hreflang for the current article
+        const selfHreflang = document.createElement("link");
+        selfHreflang.rel = "alternate";
+        selfHreflang.hreflang = data.langue || "fr";
+        selfHreflang.href = `https://bac-master-elite.com/blog/${data.slug}`;
+        document.head.appendChild(selfHreflang);
       }
       setLoading(false);
     }
@@ -174,8 +186,14 @@ export default function ArticleDetail() {
           />
         )}
 
+        {/*
+          [&_img]:max-w-full [&_img]:h-auto — prevent wide images overflowing on mobile
+          [&_table]:block [&_table]:overflow-x-auto — tables scroll horizontally instead of forcing page width
+          [&_pre]:overflow-x-auto — code blocks scroll instead of stretching page
+          [&_iframe]:max-w-full — embedded iframes stay within container
+        */}
         <div
-          className="prose prose-neutral dark:prose-invert mt-8 max-w-none"
+          className="prose prose-neutral dark:prose-invert mt-8 max-w-none [&_img]:max-w-full [&_img]:h-auto [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_iframe]:max-w-full"
           dangerouslySetInnerHTML={{ __html: article.contenu }}
         />
       </article>

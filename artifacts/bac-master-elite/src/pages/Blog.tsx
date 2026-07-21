@@ -101,32 +101,35 @@ export default function Blog() {
             : "Tips, methodology and news to help you succeed at the BAC."}
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setCategorieActive(null)}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-              !categorieActive
-                ? "bg-hero-gradient text-white border-transparent"
-                : "border-border text-muted-foreground hover-elevate"
-            }`}
-            data-testid="filter-all"
-          >
-            {langue === "fr" ? "Tous" : "All"}
-          </button>
-          {categories.map((cat) => (
+        {/* Scrollable filter bar — no wrap, avoids 5+ lines stacking on 375px mobile */}
+        <div className="mt-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
             <button
-              key={cat.id}
-              onClick={() => setCategorieActive(cat.id)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-                categorieActive === cat.id
+              onClick={() => setCategorieActive(null)}
+              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                !categorieActive
                   ? "bg-hero-gradient text-white border-transparent"
                   : "border-border text-muted-foreground hover-elevate"
               }`}
-              data-testid={`filter-${cat.slug}`}
+              data-testid="filter-all"
             >
-              {cat.nom}
+              {langue === "fr" ? "Tous" : "All"}
             </button>
-          ))}
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategorieActive(cat.id)}
+                className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                  categorieActive === cat.id
+                    ? "bg-hero-gradient text-white border-transparent"
+                    : "border-border text-muted-foreground hover-elevate"
+                }`}
+                data-testid={`filter-${cat.slug}`}
+              >
+                {cat.nom}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
