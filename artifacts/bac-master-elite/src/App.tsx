@@ -39,6 +39,7 @@ const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 const AdminAnnales = lazy(() => import("@/pages/AdminAnnales"));
+const AdminQuiz = lazy(() => import("@/pages/AdminQuiz"));
 const AdminCours = lazy(() => import("@/pages/AdminCours"));
 const AdminExercices = lazy(() => import("@/pages/AdminExercices"));
 const DashboardBlog = lazy(() => import("@/pages/DashboardBlog"));
@@ -200,6 +201,11 @@ function AppRoutes() {
       <Route path="/dashboard/admin/annales">
         <ProtectedRoute>
           <AdminAnnales />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/quiz">
+        <ProtectedRoute>
+          <AdminQuiz />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin/cours">
