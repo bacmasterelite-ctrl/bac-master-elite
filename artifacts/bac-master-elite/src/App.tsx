@@ -39,6 +39,8 @@ const Confidentialite = lazy(() => import("@/pages/Confidentialite"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 const AdminAnnales = lazy(() => import("@/pages/AdminAnnales"));
+const AdminCours = lazy(() => import("@/pages/AdminCours"));
+const AdminExercices = lazy(() => import("@/pages/AdminExercices"));
 const DashboardBlog = lazy(() => import("@/pages/DashboardBlog"));
 const DashboardArticleDetail = lazy(() => import("@/pages/DashboardArticleDetail"));
 import RefTracker from "@/components/RefTracker";
@@ -198,6 +200,16 @@ function AppRoutes() {
       <Route path="/dashboard/admin/annales">
         <ProtectedRoute>
           <AdminAnnales />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/cours">
+        <ProtectedRoute>
+          <AdminCours />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/exercices">
+        <ProtectedRoute>
+          <AdminExercices />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/blog">
